@@ -1,17 +1,34 @@
-from telebot import *
+import telebot
+from config import Config, logger
+from database import Database
+from handlers import Handlers
+from console import ConsoleHandler
 
-bot = telebot.TeleBot('6321314870:AAEeMBQVsXSFTtGJyCbljAJi1wPgxwU7yaM')
 
-markup = types.InlineKeyboardMarkup()
-btn = types.InlineKeyboardButton("Нажми меня", callback_data="click")
-markup.add(btn)
+def main():
+    """Основная функция запуска бота"""
+    try:
+        # Инициализация бота
+        bot = telebot.TeleBot(Config.BRB_TOKEN)
 
-@bot.message_handler(commands=['test'])
-def send_button(message):
-    bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
+        # Инициализация обработчиков
+        handlers = Handlers(bot)
 
-@bot.callback_query_handler(func=lambda call: True)
-def callback_handler(call):
-    bot.answer_callback_query(call.id, "Кнопка нажата!")
+        # Запуск консольного обработчика
+        ConsoleHandler.start_console_listener()
 
-bot.infinity_polling()
+        logger.info("Бот Barbariska Bot v3.1 запущен")
+        print("🤖 Barbariska Bot v3.1 запущен!")
+        print("⚡ Готов к работе...")
+        print("🎮 Консольные команды доступны в отдельном потоке")
+
+        # Запуск бота
+        bot.infinity_polling()
+
+    except Exception as e:
+        logger.error(f"Ошибка запуска бота: {e}")
+        print(f"❌ Ошибка запуска: {e}")
+
+
+if __name__ == "__main__":
+    main()

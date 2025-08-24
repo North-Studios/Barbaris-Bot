@@ -1,0 +1,4 @@
+pyTelegramBotAPI==4.16.1
+python-dotenv==1.0.1
+psutil==5.9.8
+PyInstaller==6.15.0

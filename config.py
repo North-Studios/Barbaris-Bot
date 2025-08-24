@@ -1,27 +1,44 @@
 import os
-import json
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
 class Config:
-    BOT_TOKEN = os.getenv('BRB_TOKEN')
+    BRB_TOKEN = os.getenv('BRB_TOKEN')
+    SUPER_OPERATOR = 'ghoulyonok'
 
-    try:
-        ADMINS = json.loads(os.getenv('ADMINS', '[]'))
-    except json.JSONDecodeError:
-        ADMINS = []
+    # Директории
+    DATA_DIR = os.getenv('DATA_DIR')
+    LOGS_DIR = os.getenv('LOGS_DIR')
+    BOTS_DIR = os.getenv('BOTS_DIR')
 
-    LOGS_DIR = os.getenv('LOGS_DIR', './logs')
-    BOTS_DATA_FILE = os.getenv('BOTS_DATA_FILE', './bots_data.json')
+    # Файлы данных
+    USERS_FILE = os.path.join(DATA_DIR, 'users.json')
+    BOTS_FILE = os.path.join(DATA_DIR, 'bots_data.json')
+    ADMINS_FILE = os.path.join(DATA_DIR, 'admins.json')
 
     @classmethod
-    def check_config(cls):
-        if not cls.BOT_TOKEN:
-            raise ValueError("Токен бота не указан в .env файле")
-        """Проверка корректности конфигурации"""
-        required_vars = ['BOT_TOKEN', 'ADMINS', 'LOGS_DIR', 'BOTS_DATA_FILE']
-        for var in required_vars:
-            if not getattr(cls, var):
-                raise ValueError(f'Необходимо установить переменную {var} в .env файле')
+    def setup_directories(cls):
+        """Создает необходимые директории"""
+        os.makedirs(cls.DATA_DIR, exist_ok=True)
+        os.makedirs(cls.LOGS_DIR, exist_ok=True)
+
+    @classmethod
+    def setup_logging(cls):
+        """Настройка логирования"""
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(os.path.join(cls.LOGS_DIR, 'brb-bot.log')),
+                logging.StreamHandler()
+            ]
+        )
+        return logging.getLogger('brb-bot')
+
+
+# Инициализация
+Config.setup_directories()
+logger = Config.setup_logging()
