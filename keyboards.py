@@ -29,7 +29,6 @@ class Keyboards:
         """Меню списков пользователей"""
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         buttons = [
-            types.InlineKeyboardButton("🚫 Забаненные", callback_data="list_ban"),
             types.InlineKeyboardButton("👨‍💼 Лок. админы", callback_data="list_ladmin"),
             types.InlineKeyboardButton("👑 Глоб. админы", callback_data="list_gadmin"),
             types.InlineKeyboardButton("⚡ Операторы", callback_data="list_operator")

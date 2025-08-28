@@ -1,5 +1,6 @@
+.env
 /.venv
 /.idea
 /logs
 /data/
-.env
+/bots/

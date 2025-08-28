@@ -17,8 +17,8 @@ def main():
         # Запуск консольного обработчика
         ConsoleHandler.start_console_listener()
 
-        logger.info("Бот Barbariska Bot v3.1 запущен")
-        print("🤖 Barbariska Bot v3.1 запущен!")
+        logger.info("BRB BOT v3.5 runs!")
+        print("🤖 Barbariska Bot v3.5 запущен!")
         print("⚡ Готов к работе...")
         print("🎮 Консольные команды доступны в отдельном потоке")
 

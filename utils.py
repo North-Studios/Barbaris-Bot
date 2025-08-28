@@ -3,6 +3,7 @@ import subprocess
 import psutil
 import os
 from database import Database
+from config import Config, logger
 
 
 class Utils:
@@ -12,38 +13,11 @@ class Utils:
         if not text:
             return None
 
-        # Убираем @ в начале если есть
         text = text.replace('@', '').strip()
 
-        # Проверяем валидность username
-        if re.match(r'^[a-zA-Z0-9_]{1,32}$', text):  # Исправлено: минимальная длина 1 символ
+        if re.match(r'^[a-zA-Z0-9_]{1,32}$', text):
             return text.lower()
         return None
-
-    @staticmethod
-    def get_user_info_text(username):
-        """Получение информации о пользователе"""
-        user = Database.get_user(username)
-        if not user:
-            return "❌ Пользователь не найден"
-
-        rank_translation = {
-            'user': '👤 Пользователь',
-            'ladmin': '👨‍💼 Локальный администратор',
-            'gadmin': '👑 Глобальный администратор',
-            'operator': '⚡ Оператор'
-        }
-
-        rank = rank_translation.get(user['rank'], '👤 Пользователь')
-        banned = "🚫 Забанен" if user.get('banned', False) else "✅ Отсутствуют"
-
-        return f"""👤 <b>Информация о пользователе</b>
-
-📧 Username: @{username}
-👨‍💼 Ранг: {rank}
-🆔 ID: {user.get('id', 'Неизвестно')}
-📛 Имя: {user.get('first_name', 'Неизвестно')}
-📊 Ограничения: {banned}"""
 
     @staticmethod
     def get_bot_status(bot_name):
@@ -51,12 +25,11 @@ class Utils:
         bots = Database.load_bots()
         bot = bots.get(bot_name)
 
-        if not bot or not bot.get('exe'):  # Исправлено на 'exe'
+        if not bot or not bot.get('exe'):
             return "not_found"
 
-        # Проверяем запущен ли процесс
         try:
-            exe_path = bot['exe']  # Исправлено на 'exe'
+            exe_path = bot['exe']
             exe_name = os.path.basename(exe_path)
 
             for process in psutil.process_iter(['name', 'exe']):
@@ -73,15 +46,14 @@ class Utils:
         bots = Database.load_bots()
         bot = bots.get(bot_name)
 
-        if not bot or not bot.get('exe'):  # Исправлено на 'exe'
+        if not bot or not bot.get('exe'):
             return False, "❌ Бот не найден"
 
         try:
-            # Проверяем, не запущен ли уже бот
             if Utils.get_bot_status(bot_name) == "running":
                 return False, "❌ Бот уже запущен"
 
-            subprocess.Popen([bot['exe']])  # Исправлено на 'exe'
+            subprocess.Popen([bot['exe']])
             return True, "✅ Бот запущен"
         except Exception as e:
             return False, f"❌ Ошибка запуска: {e}"
@@ -95,7 +67,7 @@ class Utils:
         if not bot:
             return False, "❌ Бот не найден"
 
-        exe_path = bot.get('exe')  # Исправлено на 'exe'
+        exe_path = bot.get('exe')
         if not exe_path:
             return False, "❌ Путь к exe не указан"
 
@@ -121,9 +93,10 @@ class Utils:
         users = Database.load_users()
         bots = Database.load_bots()
         admins = Database.load_admins()
+        banned_data = Database.load_banned()
 
         total_users = len(users)
-        banned_users = sum(1 for user in users.values() if user.get('banned', False))
+        banned_users = len(banned_data)
 
         running_bots = 0
         for bot_name in bots:
@@ -150,14 +123,12 @@ class Utils:
             return "❌ Список пуст"
 
         emoji = {
-            'ban': '🚫',
             'ladmin': '👨‍💼',
             'gadmin': '👑',
             'operator': '⚡'
         }
 
         title = {
-            'ban': 'Забаненные пользователи',
             'ladmin': 'Локальные администраторы',
             'gadmin': 'Глобальные администраторы',
             'operator': 'Операторы'
@@ -168,9 +139,28 @@ class Utils:
         for i, username in enumerate(users, 1):
             user = Database.get_user(username)
             if user:
-                status = "🚫" if user.get('banned', False) else "✅"
+                status = "🚫" if Database.is_banned(username) else "✅"
                 result.append(f"{i}. @{username} {status}")
             else:
                 result.append(f"{i}. @{username} (нет в базе)")
 
         return "\n".join(result)
+
+    @staticmethod
+    def format_ban_time(ban_time):
+        """Форматирование времени бана"""
+        if ban_time == 0:
+            return "Перманентный"
+        return f"{ban_time} часов"
+
+    @staticmethod
+    def send_message_to_user(bot, username, message):
+        """Отправка сообщения пользователю в ЛС"""
+        try:
+            user = Database.get_user(username)
+            if user and user.get('id'):
+                bot.send_message(user['id'], message)
+                return True
+        except Exception as e:
+            logger.error(f"Error sending message to {username}: {e}")
+        return False
