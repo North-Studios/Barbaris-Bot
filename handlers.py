@@ -60,6 +60,13 @@ class Handlers:
         def handle_alarm(message: Message):
             self.handle_alarm(message)
 
+        @self.bot.message_handler(commands=['chatid'])
+        def handle_start(message: Message):
+            """Обработка команды /chatid"""
+            self.bot.send_message(message.chat.id, f"🔐 CHAT ID 🔐\n\n"
+                                                   f"<code>{message.chat.id}</code>",
+                                  parse_mode='HTML')
+
         # Бот-менеджмент команды
         @self.bot.message_handler(commands=['startbot', 'stopbot', 'addbot', 'removebot'])
         def handle_bot_management(message: Message):
