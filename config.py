@@ -6,7 +6,11 @@ load_dotenv()
 
 
 class Config:
+    bot_version = 4.1
+
     BRB_TOKEN = os.getenv('BRB_TOKEN')
+    DS_BRB_TOKEN = os.getenv('DS_BRB_TOKEN')
+
     SUPER_OPERATOR = os.getenv('SUPER_OPERATOR', 'ghoulyonok')
     MAX_WARN = int(os.getenv('MAX_WARN', 3))
     DEFAULT_BAN_TIME = int(os.getenv('DEFAULT_BAN_TIME', 0))

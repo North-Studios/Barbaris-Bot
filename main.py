@@ -1,8 +1,10 @@
 import telebot
+import threading
 from config import Config, logger
-from database import Database
 from handlers import Handlers
 from console import ConsoleHandler
+from discord_bot import start_discord_bot
+from utils import Utils  # Добавляем импорт
 
 
 def main():
@@ -11,14 +13,23 @@ def main():
         # Инициализация бота
         bot = telebot.TeleBot(Config.BRB_TOKEN)
 
+        # Устанавливаем экземпляр бота в Utils для отправки сообщений
+        Utils.set_telegram_bot(bot)
+
         # Инициализация обработчиков
         handlers = Handlers(bot)
 
         # Запуск консольного обработчика
         ConsoleHandler.start_console_listener()
 
-        logger.info("BRB BOT v3.6 runs!")
-        print("🤖 Barbariska Bot v3.6 запущен!")
+        # Запуск Discord бота в отдельном потоке
+        discord_thread = threading.Thread(target=start_discord_bot, daemon=True)
+        discord_thread.start()
+
+        logger.info(f"BRB BOT v{Config.bot_version} runs!")
+        logger.info(f"Discord bot starting in separate thread")
+        print(f"🤖 Barbariska Bot v{Config.bot_version} запущен!")
+        print("🤖 Discord bot запускается в отдельном потоке")
         print("⚡ Готов к работе...")
         print("🎮 Консольные команды доступны в отдельном потоке")
 

@@ -1,111 +1,183 @@
-# 🤖 Barbariska Bot v3.6
+# 🤖 Barbariska Bot v4.1
 
-Telegram bot for user administration and bot management. Supports roles, permission system, database operations, and console commands.
+Telegram and Discord bot for managing users and bots. Supports role system, access rights, database operations, console commands, and Discord integration.
 
 ---
 
-## ✨ Features
+## ✨ New Features in v4.1
 
-### 📌 Commands
+* **🤖 Discord Integration** - full synchronization of commands between Telegram and Discord
+* **👮‍♂️ Discord Role System** - access only for users with the "Dev" role
+* **🔄 Automatic Command Sync** - slash commands in Discord
+* **📊 Improved Statistics** - extended system information
+* **🎮 Interactive Menus** - selection buttons in Discord
 
-#### 👤 Basic Commands
+---
 
-* **`/start` and `/help`** — greeting and help message.
-* **`/me`** — get info about yourself.
+## 📌 Commands
 
-#### 🔧 Administrator Commands
+### 👤 Basic Commands (Telegram & Discord)
 
-* **`/stats`** — view statistics.
-* **`/getinfo @username`** — get user information.
-* **`/list`** — view lists.
-* **`/alarm [text]`** — send a broadcast message.
-* **`/promote @username` / `/demote @username`** — grant or revoke privileges.
-* **`/ban @username` / `/unban @username`** — block or unblock a user.
-* **`/warn @username` / `/unwarn @username`** — issue or remove warnings.
-* **`/addbot` / `/removebot`** — add or remove a bot from the system.
-* **`/startbot` / `/stopbot`** — start or stop a bot.
+* **`/start`**, **`/help`** - greeting and help
+* **`/me`** - info about yourself
+* **`/stats`** - system statistics
+* **`/getinfo @username`** - user information
 
-### 👥 Roles
+### 🔧 Administrative Commands
 
-* **User** — standard role.
-* **Local Admin (ladmin)** — limited rights.
-* **Global Admin (gadmin)** — extended rights.
-* **Operator (operator)** — full access to bot management.
-* **Super-Operator** — main administrator (configured via `.env`).
+* **`/list [type]`** - view lists (ladmin, gadmin, operator)
+* **`/alarm [text]`** - mass notification
+* **`/promote @username`** - promote a user
+* **`/demote @username`** - demote a user
+* **`/ban @username [time] [reason]`** - block a user
+* **`/unban @username`** - unblock a user
+* **`/warn @username [reason]`** - issue a warning
+* **`/unwarn @username`** - remove a warning
+
+### 🤖 Bot Management
+
+* **`/addbot <name> @username <type>`** - add a bot
+* **`/removebot <name>`** - remove a bot
+* **`/startbot <name>`** - start a bot
+* **`/stopbot <name>`** - stop a bot
+* **`/botlist`** - list all bots
 
 ### 🖥️ Console Commands
 
-* **`/op @username`** — grant operator role.
-* **`/unop @username`** — revoke operator role.
-
-### 🗂️ Keyboards
-
-* Main menu (depends on the role).
-* View lists of local and global admins.
-
-### 💾 Database
-
-* Users (`users.json`).
-* Administrators (`admins.json`).
-* Bots and their statuses (`bots_data.json`).
-* Banned users (`banned.json`).
-
-### 🔧 Utilities
-
-* Extract username from text.
-* Check bot process status (`running`, `stopped`, `not_found`).
+* **`/op @username`** - assign operator
+* **`/unop @username`** - remove operator
 
 ---
 
-## ⚙️ Installation and Run
+## 👥 Role System
+
+### Telegram Roles:
+
+* **👤 User** - regular user
+* **🪛 Local Admin (ladmin)** - local rights for a specific bot
+* **🔧 Global Admin (gadmin)** - extended rights
+* **⚡ Operator (operator)** - full access to management
+* **🌟 Super-Operator** - main administrator (configured in `.env`)
+
+### Discord Roles:
+
+* **👨‍💻 Dev** - required role for bot commands
+
+---
+
+## ⚙️ Installation and Launch
 
 1. Clone the project:
 
 ```bash
- git clone <repo_url>
- cd brb-bot
+git clone <repo_url>
+cd brb-bot
 ```
 
 2. Install dependencies:
 
 ```bash
- pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-3. Create a `.env` file and specify the parameters:
+3. Configure `.env` file:
 
 ```env
-BRB_TOKEN=your_bot_token
+BRB_TOKEN=your_telegram_bot_token
+DS_BRB_TOKEN=your_discord_bot_token
 SUPER_OPERATOR=your_username
 MAX_WARN=3
 DEFAULT_BAN_TIME=0
+DATA_DIR=data
+LOGS_DIR=logs
+BOTS_DIR=bots
 ```
 
-4. Run the bot:
+4. Configure Discord bot:
+
+   * Create an application on [Discord Developer Portal](https://discord.com/developers/applications)
+   * Enable `SERVER MEMBERS INTENT` and `MESSAGE CONTENT INTENT`
+   * Create "Dev" role on the server
+   * Assign the role to users who should have access to the bot
+
+5. Run:
 
 ```bash
- python main.py
+python main.py
 ```
 
 ---
 
-## 🗃️ Project Structure
+## 🗂️ Project Structure
 
 ```
-├── main.py          # Entry point
-├── handlers.py      # Command and message handlers
-├── keyboards.py     # Telegram keyboards
-├── database.py      # Work with JSON database
-├── utils.py         # Utility functions
-├── config.py        # Configuration and logging
-├── console.py       # Console commands
-├── hook-env.py      # PyInstaller script
-├── logs/            # Directory for log files
-└── data/            # Directory for data files
+├── main.py              # Entry point
+├── discord_bot.py       # Discord bot and commands
+├── handlers.py          # Telegram command handlers
+├── keyboards.py         # Telegram keyboards
+├── database.py          # Work with JSON database
+├── utils.py             # Utilities and functions
+├── config.py            # Configuration and logging
+├── console.py           # Console commands
+├── hook-env.py          # Script for PyInstaller
+├── requirements.txt     # Dependencies
+├── logs/                # Logs directory
+├── data/                # Data (JSON files)
+└── bots/                # Executable bot files
 ```
 
 ---
 
-## 🏷️ Version
+## 🔧 Discord Setup
 
-**Barbariska Bot v3.6**
+### Required Bot Permissions:
+
+* `Applications.commands`
+* `Send Messages`
+* `Read Message History`
+* `Use Slash Commands`
+
+### Required Intents:
+
+* `SERVER MEMBERS INTENT`
+* `MESSAGE CONTENT INTENT`
+
+### Discord Commands:
+
+All commands are available via slash (`/`) with autocomplete:
+
+* `/addbot` - add a bot
+* `/alarm` - mass notification
+* `/bantg` - ban a Telegram user
+* `/botlist` - list of bots
+* And all other commands from Telegram
+
+---
+
+## 🚀 Features v4.1
+
+* **🔐 Security** - double rights check (Telegram + Discord)
+* **📱 Cross-platform** - works via Telegram and Discord
+* **⚡ Performance** - multithreaded architecture
+* **📊 Monitoring** - detailed logging of all actions
+* **🎯 Usability** - intuitive interfaces and hints
+
+---
+
+## 📝 Versions
+
+**v4.1** - Full Discord integration, interactive menus, improved security
+**v3.6** - Basic version with Telegram functionality
+
+---
+
+## 🆘 Support
+
+If problems occur:
+
+1. Check all dependencies
+2. Ensure tokens in `.env` are correct
+3. Verify bot permissions on Discord server
+4. Ensure "Dev" role is created and assigned
+
+For diagnostics, use logs in the `logs/` directory

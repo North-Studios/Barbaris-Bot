@@ -5,6 +5,7 @@ import os
 from database import Database
 from config import Config, logger
 
+telegram_bot = None
 
 class Utils:
     @staticmethod
@@ -160,6 +161,28 @@ class Utils:
             user = Database.get_user(username)
             if user and user.get('id'):
                 bot.send_message(user['id'], message)
+                return True
+        except Exception as e:
+            logger.error(f"Error sending message to {username}: {e}")
+        return False
+
+    @staticmethod
+    def set_telegram_bot(bot_instance):
+        """Установка экземпляра Telegram бота для отправки сообщений"""
+        global telegram_bot
+        telegram_bot = bot_instance
+
+    @staticmethod
+    def send_message_to_user(bot, username, message):
+        """Отправка сообщения пользователю в ЛС через Telegram"""
+        try:
+            user = Database.get_user(username)
+            if user and user.get('id'):
+                # Используем глобальный экземпляр бота если не передан
+                if bot is None and telegram_bot is not None:
+                    telegram_bot.send_message(user['id'], message, parse_mode='HTML')
+                elif bot is not None:
+                    bot.send_message(user['id'], message, parse_mode='HTML')
                 return True
         except Exception as e:
             logger.error(f"Error sending message to {username}: {e}")
