@@ -34,7 +34,7 @@ class DiscordBot:
         @app_commands.describe(name="Bot name", username="Bot username", bot_type="Bot type")
         async def addbot(interaction: discord.Interaction, name: str, username: str, bot_type: str):
             """Добавление нового бота"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             # Проверяем валидность username
@@ -72,7 +72,7 @@ class DiscordBot:
         @app_commands.describe(message="Message to send")
         async def alarm(interaction: discord.Interaction, message: str):
             """Массовое уведомление всех пользователей"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             users = Database.load_users()
@@ -110,7 +110,7 @@ class DiscordBot:
         @app_commands.describe(username="Telegram username", ban_time="Ban duration in hours", reason="Ban reason")
         async def ban(interaction: discord.Interaction, username: str, ban_time: int = 0, reason: str = ""):
             """Бан пользователя"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_admin_role(interaction):
                 return
 
             target_username = Utils.extract_username(username)
@@ -155,7 +155,7 @@ class DiscordBot:
         @self.bot.tree.command(name="botlist", description="Show list of all bots")
         async def botlist(interaction: discord.Interaction):
             """Список всех ботов"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             bots = Database.load_bots()
@@ -180,7 +180,7 @@ class DiscordBot:
         @app_commands.describe(username="Telegram username")
         async def demote(interaction: discord.Interaction, username: str):
             """Понижение пользователя"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             target_username = Utils.extract_username(username)
@@ -206,7 +206,7 @@ class DiscordBot:
         @app_commands.describe(username="Telegram username")
         async def getinfo(interaction: discord.Interaction, username: str):
             """Информация о пользователе"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             target_username = Utils.extract_username(username)
@@ -260,32 +260,30 @@ class DiscordBot:
         @self.bot.tree.command(name="brbhelp", description="Show help for all commands")
         async def help_command(interaction: discord.Interaction):
             """Показать справку по командам"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_admin_role(interaction):
                 return
 
             help_text = """
-**Bot Management:**
-`/addbot <name> <@username> <type>` - Add new bot
-`/removebot <name>` - Remove bot
-`/startbot <name>` - Start bot
-`/stopbot <name>` - Stop bot
-`/botlist` - Show bot list
-
-**User Management:**
+**Global Admin Commands:**
 `/bantg <@username> [time] [reason]` - Ban user
 `/unban <@username>` - Unban user
 `/warn <@username> [reason]` - Warn user
 `/unwarn <@username>` - Remove warning
+`/botlist` - Show bot list
+
+**Operators Commands:**
+`/alarm <message>` - Mass notification
+`/stats` - Show system statistics
+`/list <type>` - Show user lists (ladmin, gadmin, operator)
+`/getinfo <@username>` - Get user info
 `/promote <@username>` - Promote user
 `/demote <@username>` - Demote user
-`/getinfo <@username>` - Get user info
-
-**Lists & Stats:**
-`/list <type>` - Show user lists (ladmin, gadmin, operator)
-`/stats` - Show system statistics
+`/addbot <name> <@username> <type>` - Add new bot
+`/removebot <name>` - Remove bot
+`/startbot <name>` - Start bot
+`/stopbot <name>` - Stop bot
 
 **Utilities:**
-`/alarm <message>` - Mass notification
 `/brbhelp` - Show this help
             """
             embed = discord.Embed(
@@ -299,7 +297,7 @@ class DiscordBot:
         @app_commands.describe(list_type="List type (ladmin, gadmin, operator)")
         async def list_command(interaction: discord.Interaction, list_type: str):
             """Показать списки пользователей"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             list_type = list_type.lower()
@@ -320,19 +318,26 @@ class DiscordBot:
                 await send_error(interaction, "❌ Unknown list type! Available: ladmin, gadmin, operator")
                 return
 
-            list_text = text.split('</b>')
-            embed = discord.Embed(
-                title=list_text[0][3:],
-                description=list_text[1],
-                color=discord.Color.blue()
-            )
+            if text == '❌ Список пуст':
+                embed = discord.Embed(
+                    title=text,
+                    color=discord.Color.brand_red()
+                )
+
+            else:
+                list_text = text.split('</b>')
+                embed = discord.Embed(
+                    title=list_text[0][3:],
+                    description=list_text[1],
+                    color=discord.Color.blue()
+                )
             await interaction.response.send_message(embed=embed)
 
         @self.bot.tree.command(name="promote", description="Promote user to higher rank")
         @app_commands.describe(username="Telegram username")
         async def promote(interaction: discord.Interaction, username: str):
             """Повышение пользователя"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             target_username = Utils.extract_username(username)
@@ -364,7 +369,7 @@ class DiscordBot:
         @app_commands.describe(name="Bot name")
         async def removebot(interaction: discord.Interaction, name: str):
             """Удаление бота"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             if Database.remove_bot(name):
@@ -381,7 +386,7 @@ class DiscordBot:
         @app_commands.describe(name="Bot name")
         async def startbot(interaction: discord.Interaction, name: str):
             """Запуск бота"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             success, result = Utils.start_bot(name)
@@ -402,7 +407,7 @@ class DiscordBot:
         @self.bot.tree.command(name="stats", description="Show system statistics")
         async def stats(interaction: discord.Interaction):
             """Статистика системы"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             stats_text = Utils.get_stats().split('</b>')
@@ -417,7 +422,7 @@ class DiscordBot:
         @app_commands.describe(name="Bot name")
         async def stopbot(interaction: discord.Interaction, name: str):
             """Остановка бота"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_op_role(interaction):
                 return
 
             success, result = Utils.stop_bot(name)
@@ -439,7 +444,7 @@ class DiscordBot:
         @app_commands.describe(username="Telegram username")
         async def unban(interaction: discord.Interaction, username: str):
             """Разбан пользователя"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_admin_role(interaction):
                 return
 
             target_username = Utils.extract_username(username)
@@ -470,7 +475,7 @@ class DiscordBot:
         @app_commands.describe(username="Telegram username")
         async def unwarn(interaction: discord.Interaction, username: str):
             """Снятие предупреждения"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_admin_role(interaction):
                 return
 
             target_username = Utils.extract_username(username)
@@ -506,7 +511,7 @@ class DiscordBot:
         @app_commands.describe(username="Telegram username", reason="Warning reason")
         async def warn(interaction: discord.Interaction, username: str, reason: str = ""):
             """Выдача предупреждения"""
-            if not await self.check_dev_role(interaction):
+            if not await self.check_admin_role(interaction):
                 return
 
             target_username = Utils.extract_username(username)
@@ -592,13 +597,24 @@ class DiscordBot:
                 await ctx.send(embed=embed)
                 logger.error(f"DISCORD: Command error: {error}")
 
-    async def check_dev_role(self, interaction: discord.Interaction):
-        """Проверка роли Dev у пользователя"""
-        # Проверяем, есть ли у пользователя роль Dev
-        dev_role = discord.utils.get(interaction.user.roles, name="Dev")
-        if not dev_role:
-            await send_error(interaction, "❌ Access denied! Only users with 'Dev' role can use this bot.")
-            logger.warning(f"DISCORD: Access denied for {interaction.user.name} - No Dev role")
+    async def check_op_role(self, interaction: discord.Interaction):
+        """Проверка роли Operator у пользователя"""
+        # Проверяем, есть ли у пользователя роль Operator
+        op_role = discord.utils.get(interaction.user.roles, name="Operator")
+        if not op_role:
+            await send_error(interaction, "❌ Access denied! Only users with 'Operator' role can use this bot.")
+            logger.warning(f"DISCORD: Access denied for {interaction.user.name} - No Operator role")
+            return False
+        return True
+
+    async def check_admin_role(self, interaction: discord.Interaction):
+        """Проверка роли gadmin у пользователя"""
+        # Проверяем, есть ли у пользователя роль Global Admin
+        gadmin_role = discord.utils.get(interaction.user.roles, name="Global Admin")
+        op_role = discord.utils.get(interaction.user.roles, name="Operator")
+        if not gadmin_role and not op_role:
+            await send_error(interaction, "❌ Access denied! Only users with 'Global Admin' role or higher can use this bot.")
+            logger.warning(f"DISCORD: Access denied for {interaction.user.name} - No gadmin role")
             return False
         return True
 

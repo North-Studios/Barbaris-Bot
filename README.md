@@ -1,87 +1,60 @@
-# 🤖 Barbariska Bot v4.1
+# 🤖 Barbariska Bot v4.2
 
-Telegram and Discord bot for managing users and bots. Supports role system, access rights, database operations, console commands, and Discord integration.
-
----
-
-## ✨ New Features in v4.1
-
-* **🤖 Discord Integration** - full synchronization of commands between Telegram and Discord
-* **👮‍♂️ Discord Role System** - access only for users with the "Dev" role
-* **🔄 Automatic Command Sync** - slash commands in Discord
-* **📊 Improved Statistics** - extended system information
-* **🎮 Interactive Menus** - selection buttons in Discord
+Telegram and Discord bot for managing users and bots with enhanced role-based access control and improved Discord integration.
 
 ---
 
-## 📌 Commands
+## ✨ New Features in v4.2
 
-### 👤 Basic Commands (Telegram & Discord)
-
-* **`/start`**, **`/help`** - greeting and help
-* **`/me`** - info about yourself
-* **`/stats`** - system statistics
-* **`/getinfo @username`** - user information
-
-### 🔧 Administrative Commands
-
-* **`/list [type]`** - view lists (ladmin, gadmin, operator)
-* **`/alarm [text]`** - mass notification
-* **`/promote @username`** - promote a user
-* **`/demote @username`** - demote a user
-* **`/ban @username [time] [reason]`** - block a user
-* **`/unban @username`** - unblock a user
-* **`/warn @username [reason]`** - issue a warning
-* **`/unwarn @username`** - remove a warning
-
-### 🤖 Bot Management
-
-* **`/addbot <name> @username <type>`** - add a bot
-* **`/removebot <name>`** - remove a bot
-* **`/startbot <name>`** - start a bot
-* **`/stopbot <name>`** - stop a bot
-* **`/botlist`** - list all bots
-
-### 🖥️ Console Commands
-
-* **`/op @username`** - assign operator
-* **`/unop @username`** - remove operator
+* **🎯 Enhanced Role System** - Two-tier Discord role system (Operator + Global Admin)
+* **🔒 Improved Security** - Separate permission levels for different commands
+* **👮‍♂️ Granular Access Control** - Different Discord roles for different command sets
+* **📊 Better Error Handling** - Improved user feedback and error messages
+* **🔄 Streamlined Command Structure** - More logical command organization
 
 ---
 
-## 👥 Role System
+## 📌 Command Changes in v4.2
 
-### Telegram Roles:
+### Discord Role Requirements Changed:
 
-* **👤 User** - regular user
-* **🪛 Local Admin (ladmin)** - local rights for a specific bot
-* **🔧 Global Admin (gadmin)** - extended rights
-* **⚡ Operator (operator)** - full access to management
-* **🌟 Super-Operator** - main administrator (configured in `.env`)
+**v4.1:** Only "Dev" role could access all commands  
+**v4.2:** Two distinct roles with different permissions:
 
-### Discord Roles:
+* **👨‍💻 Operator Role** - Basic management commands
+* **🔧 Global Admin Role** - Advanced administrative commands + Operator access
 
-* **👨‍💻 Dev** - required role for bot commands
+### Discord Command Access Matrix:
+
+#### 👨‍💻 Operator Commands (Available to both roles):
+* `/alarm <message>` - Mass notification
+* `/stats` - Show system statistics  
+* `/list <type>` - Show user lists (ladmin, gadmin, operator)
+* `/getinfo @username` - Get user info
+* `/promote @username` - Promote user
+* `/demote @username` - Demote user
+* `/addbot <name> <@username> <type>` - Add new bot
+* `/removebot <name>` - Remove bot
+* `/startbot <name>` - Start bot
+* `/stopbot <name>` - Stop bot
+
+#### 🔧 Global Admin Commands (Additional to Operator):
+* `/bantg <@username> [time] [reason]` - Ban user
+* `/unban @username` - Unban user  
+* `/warn @username [reason]` - Warn user
+* `/unwarn @username` - Remove warning
+* `/botlist` - Show bot list
 
 ---
 
-## ⚙️ Installation and Launch
+## ⚙️ Installation and Setup
 
-1. Clone the project:
-
-```bash
-git clone <repo_url>
-cd brb-bot
-```
-
-2. Install dependencies:
-
+### 1. Install Dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Configure `.env` file:
-
+### 2. Configure `.env` File:
 ```env
 BRB_TOKEN=your_telegram_bot_token
 DS_BRB_TOKEN=your_discord_bot_token
@@ -93,81 +66,90 @@ LOGS_DIR=logs
 BOTS_DIR=bots
 ```
 
-4. Configure Discord bot:
+### 3. Discord Server Setup:
 
-   * Create an application on [Discord Developer Portal](https://discord.com/developers/applications)
-   * Enable `SERVER MEMBERS INTENT` and `MESSAGE CONTENT INTENT`
-   * Create "Dev" role on the server
-   * Assign the role to users who should have access to the bot
+**Create Required Roles:**
+- `Operator` - Basic management access
+- `Global Admin` - Full administrative access
 
-5. Run:
+**Bot Permissions Required:**
+- `Applications.commands`
+- `Send Messages` 
+- `Read Message History`
+- `Use Slash Commands`
 
+**Enable Intents:**
+- `SERVER MEMBERS INTENT`
+- `MESSAGE CONTENT INTENT`
+
+### 4. Run the Bot:
 ```bash
 python main.py
 ```
 
 ---
 
-## 🗂️ Project Structure
+## 🗂️ Project Structure v4.2
 
 ```
-├── main.py              # Entry point
-├── discord_bot.py       # Discord bot and commands
-├── handlers.py          # Telegram command handlers
-├── keyboards.py         # Telegram keyboards
-├── database.py          # Work with JSON database
-├── utils.py             # Utilities and functions
-├── config.py            # Configuration and logging
-├── console.py           # Console commands
-├── hook-env.py          # Script for PyInstaller
-├── requirements.txt     # Dependencies
-├── logs/                # Logs directory
-├── data/                # Data (JSON files)
-└── bots/                # Executable bot files
+├── main.py                 # Main entry point
+├── discord_bot.py         # Updated Discord bot (v4.2)
+├── discord_bot v4.1.py    # Previous version (backup)
+├── handlers.py            # Telegram command handlers
+├── keyboards.py           # Telegram keyboards
+├── database.py            # JSON database operations
+├── utils.py               # Utilities and functions
+├── config.py              # Configuration and logging
+├── console.py             # Console commands
+├── hook-env.py           # PyInstaller hook
+├── requirements.txt       # Dependencies
+├── logs/                  # Logs directory
+├── data/                  # Data files (JSON)
+└── bots/                  # Executable bot files
 ```
 
 ---
 
-## 🔧 Discord Setup
+## 🔧 Key Technical Changes
 
-### Required Bot Permissions:
+### Security Enhancements:
+- **Dual role verification** in Discord (`check_op_role()` + `check_admin_role()`)
+- **Command-specific access control** based on role hierarchy
+- **Improved error messages** for permission denied cases
 
-* `Applications.commands`
-* `Send Messages`
-* `Read Message History`
-* `Use Slash Commands`
+### Code Improvements:
+- **Separated permission checks** for different command categories
+- **Better role validation** with specific error messages
+- **Enhanced logging** for Discord role-based access attempts
 
-### Required Intents:
-
-* `SERVER MEMBERS INTENT`
-* `MESSAGE CONTENT INTENT`
-
-### Discord Commands:
-
-All commands are available via slash (`/`) with autocomplete:
-
-* `/addbot` - add a bot
-* `/alarm` - mass notification
-* `/bantg` - ban a Telegram user
-* `/botlist` - list of bots
-* And all other commands from Telegram
+### User Experience:
+- **Clearer help text** showing command categories by role
+- **Better feedback** when users lack required permissions
+- **Consistent error handling** across both Telegram and Discord
 
 ---
 
-## 🚀 Features v4.1
+## 🚀 Migration from v4.1 to v4.2
 
-* **🔐 Security** - double rights check (Telegram + Discord)
-* **📱 Cross-platform** - works via Telegram and Discord
-* **⚡ Performance** - multithreaded architecture
-* **📊 Monitoring** - detailed logging of all actions
-* **🎯 Usability** - intuitive interfaces and hints
+### Required Changes:
+1. **Create new Discord roles**: `Operator` and `Global Admin`
+2. **Assign roles appropriately** to team members
+3. **Update role mentions** in documentation
+4. **Verify permission levels** for all users
+
+### Backward Compatibility:
+- ✅ Telegram commands unchanged
+- ✅ Database structure unchanged  
+- ✅ Console commands unchanged
+- ✅ Configuration format unchanged
 
 ---
 
-## 📝 Versions
+## 📝 Version History
 
-**v4.1** - Full Discord integration, interactive menus, improved security
-**v3.6** - Basic version with Telegram functionality
+**v4.2** - Enhanced Discord role system, granular permissions, improved security
+**v4.1** - Initial Discord integration with single "Dev" role
+**v3.6** - Telegram-only version with basic functionality
 
 ---
 
