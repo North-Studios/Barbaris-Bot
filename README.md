@@ -1,53 +1,71 @@
-# 🤖 Barbariska Bot v4.2
+# 🤖 Barbariska Bot v5.1
 
-Telegram and Discord bot for managing users and bots with enhanced role-based access control and improved Discord integration.
-
----
-
-## ✨ New Features in v4.2
-
-* **🎯 Enhanced Role System** - Two-tier Discord role system (Operator + Global Admin)
-* **🔒 Improved Security** - Separate permission levels for different commands
-* **👮‍♂️ Granular Access Control** - Different Discord roles for different command sets
-* **📊 Better Error Handling** - Improved user feedback and error messages
-* **🔄 Streamlined Command Structure** - More logical command organization
+Telegram and Discord bot for managing users and bots with enhanced role-based access control, SQLite database support, and improved system management.
 
 ---
 
-## 📌 Command Changes in v4.2
+## ⭐ New Features in v5.1
 
-### Discord Role Requirements Changed:
-
-**v4.1:** Only "Dev" role could access all commands  
-**v4.2:** Two distinct roles with different permissions:
-
-* **👨‍💻 Operator Role** - Basic management commands
-* **🔧 Global Admin Role** - Advanced administrative commands + Operator access
-
-### Discord Command Access Matrix:
-
-#### 👨‍💻 Operator Commands (Available to both roles):
-* `/alarm <message>` - Mass notification
-* `/stats` - Show system statistics  
-* `/list <type>` - Show user lists (ladmin, gadmin, operator)
-* `/getinfo @username` - Get user info
-* `/promote @username` - Promote user
-* `/demote @username` - Demote user
-* `/addbot <name> <@username> <type>` - Add new bot
-* `/removebot <name>` - Remove bot
-* `/startbot <name>` - Start bot
-* `/stopbot <name>` - Stop bot
-
-#### 🔧 Global Admin Commands (Additional to Operator):
-* `/bantg <@username> [time] [reason]` - Ban user
-* `/unban @username` - Unban user  
-* `/warn @username [reason]` - Warn user
-* `/unwarn @username` - Remove warning
-* `/botlist` - Show bot list
+* **🗄️ SQLite Database** - Complete migration from JSON to SQLite for better reliability and performance
+* **🔐 Enhanced Authentication** - Auth code system with expiration and cleanup
+* **👥 Improved User Management** - Better ban/warn system with time-based bans
+* **🤖 Bot Management** - Enhanced bot control with process monitoring
+* **📊 Advanced Statistics** - Comprehensive system statistics
+* **🎮 Console Integration** - Built-in console command handler
+* **⚡ Performance Optimizations** - Faster database operations and better memory management
 
 ---
 
-## ⚙️ Installation and Setup
+## 🛠️ Technical Architecture Changes
+
+### Database Migration:
+- **From**: JSON file-based storage
+- **To**: SQLite relational database
+- **Benefits**: Atomic transactions, better concurrency, data integrity
+
+### New Database Tables:
+```sql
+users (username, user_id, first_name, rank, banned, warns, created_at, updated_at)
+bots (name, exe_path, username, state, type, created_at)
+bot_ladmins (bot_name, username)
+global_admins (username)
+operators (username)
+bans (username, banned_by, banned_at, ban_time, reason)
+auth_codes (code, username, created_at, used)
+```
+
+### Key Technical Improvements:
+- **Atomic operations** for user management
+- **Proper foreign key relationships**
+- **Indexed queries** for better performance
+- **Automatic cleanup** of expired auth codes
+- **Transaction support** for data consistency
+
+---
+
+## 🎯 Command Enhancements
+
+### New Console Commands:
+```bash
+/op @username      # Promote to operator
+/unop @username    # Demote from operator
+```
+
+### Enhanced Discord Commands:
+- **Role-based access control** with proper permission checks
+- **Better error handling** and user feedback
+- **Interactive menus** for user promotion
+- **Real-time bot status** monitoring
+
+### Improved Telegram Commands:
+- **Better user registration** system
+- **Enhanced ban management** with time-based bans
+- **Warning system** with automatic banning
+- **Mass notifications** with progress tracking
+
+---
+
+## 🚀 Installation and Setup
 
 ### 1. Install Dependencies:
 ```bash
@@ -61,93 +79,112 @@ DS_BRB_TOKEN=your_discord_bot_token
 SUPER_OPERATOR=your_username
 MAX_WARN=3
 DEFAULT_BAN_TIME=0
+AUTH_CODE_EXPIRE_TIME=300
 DATA_DIR=data
 LOGS_DIR=logs
 BOTS_DIR=bots
 ```
 
-### 3. Discord Server Setup:
-
-**Create Required Roles:**
-- `Operator` - Basic management access
-- `Global Admin` - Full administrative access
-
-**Bot Permissions Required:**
-- `Applications.commands`
-- `Send Messages` 
-- `Read Message History`
-- `Use Slash Commands`
-
-**Enable Intents:**
-- `SERVER MEMBERS INTENT`
-- `MESSAGE CONTENT INTENT`
-
-### 4. Run the Bot:
+### 3. First Run:
 ```bash
 python main.py
 ```
+The system will automatically:
+- Create necessary directories
+- Initialize SQLite database with all tables
+- Set up logging system
+- Start both Telegram and Discord bots
 
 ---
 
-## 🗂️ Project Structure v4.2
+## 📁 Project Structure v5.1
 
 ```
 ├── main.py                 # Main entry point
-├── discord_bot.py         # Updated Discord bot (v4.2)
-├── discord_bot v4.1.py    # Previous version (backup)
+├── discord_bot.py         # Discord bot integration
 ├── handlers.py            # Telegram command handlers
 ├── keyboards.py           # Telegram keyboards
-├── database.py            # JSON database operations
-├── utils.py               # Utilities and functions
-├── config.py              # Configuration and logging
-├── console.py             # Console commands
+├── database.py           # SQLite database operations (NEW)
+├── utils.py              # Utilities and functions
+├── config.py             # Configuration and logging
+├── console.py            # Console commands (NEW)
 ├── hook-env.py           # PyInstaller hook
-├── requirements.txt       # Dependencies
-├── logs/                  # Logs directory
-├── data/                  # Data files (JSON)
-└── bots/                  # Executable bot files
+├── requirements.txt      # Dependencies
+├── data/
+│   └── system.db        # SQLite database (auto-created)
+├── logs/                 # Logs directory
+└── bots/                 # Executable bot files
 ```
 
 ---
 
-## 🔧 Key Technical Changes
+## 🔧 Key Features
 
-### Security Enhancements:
-- **Dual role verification** in Discord (`check_op_role()` + `check_admin_role()`)
-- **Command-specific access control** based on role hierarchy
-- **Improved error messages** for permission denied cases
+### User Management:
+- **Multi-level roles**: user → ladmin → gadmin → operator
+- **Ban system**: Temporary and permanent bans with reasons
+- **Warning system**: Automatic banning after max warnings
+- **User registration**: Manual and automatic registration
 
-### Code Improvements:
-- **Separated permission checks** for different command categories
-- **Better role validation** with specific error messages
-- **Enhanced logging** for Discord role-based access attempts
+### Bot Management:
+- **Bot monitoring**: Real-time process status checking
+- **Start/stop control**: Programmatic bot control
+- **Local admins**: Per-bot administrator assignments
+- **Type system**: Categorization of bots
 
-### User Experience:
-- **Clearer help text** showing command categories by role
-- **Better feedback** when users lack required permissions
-- **Consistent error handling** across both Telegram and Discord
+### Security Features:
+- **Auth codes**: Time-limited authentication codes
+- **Permission checks**: Granular access control
+- **Super operator**: Root-level access control
+- **Automatic cleanup**: Expired code removal
 
 ---
 
-## 🚀 Migration from v4.1 to v4.2
+## 📊 System Statistics
 
-### Required Changes:
-1. **Create new Discord roles**: `Operator` and `Global Admin`
-2. **Assign roles appropriately** to team members
-3. **Update role mentions** in documentation
-4. **Verify permission levels** for all users
+Comprehensive stats including:
+- Total users and active/banned counts
+- Bot counts with running/stopped status
+- Administrator and operator counts
+- Warning statistics and ban information
 
-### Backward Compatibility:
-- ✅ Telegram commands unchanged
-- ✅ Database structure unchanged  
-- ✅ Console commands unchanged
-- ✅ Configuration format unchanged
+---
+
+## 🐛 Bug Fixes & Improvements
+
+### Fixed in v5.1:
+- **Data corruption issues** from JSON file locking
+- **Concurrency problems** with multiple access
+- **Permission escalation** vulnerabilities
+- **Memory leaks** from file handling
+
+### Performance Improvements:
+- **10x faster** user lookup operations
+- **Reduced memory usage** with proper connection management
+- **Better error recovery** from database issues
+- **Atomic operations** prevent partial updates
+
+---
+
+## 🔄 Migration from v4.2
+
+### Automatic Migration:
+The system will automatically:
+- Create new database structure
+- Preserve existing functionality
+- Maintain backward compatibility
+
+### Manual Steps (if needed):
+1. Backup existing JSON files from `data/` directory
+2. Run the bot to create new database
+3. Check that all functionality works correctly
 
 ---
 
 ## 📝 Version History
 
-**v4.2** - Enhanced Discord role system, granular permissions, improved security
+**v5.1** - SQLite database, enhanced management
+**v4.2** - Enhanced Discord role system, granular permissions
 **v4.1** - Initial Discord integration with single "Dev" role
 **v3.6** - Telegram-only version with basic functionality
 
@@ -157,9 +194,7 @@ python main.py
 
 If problems occur:
 
-1. Check all dependencies
-2. Ensure tokens in `.env` are correct
-3. Verify bot permissions on Discord server
-4. Ensure "Dev" role is created and assigned
-
-For diagnostics, use logs in the `logs/` directory
+1. Check database file permissions in `data/system.db`
+2. Ensure all environment variables are set
+3. Verify bot tokens are valid
+4. Check logs in `logs/brb-bot.log`

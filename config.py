@@ -6,7 +6,7 @@ load_dotenv()
 
 
 class Config:
-    bot_version = 4.2
+    bot_version = 5.1
 
     BRB_TOKEN = os.getenv('BRB_TOKEN')
     DS_BRB_TOKEN = os.getenv('DS_BRB_TOKEN')
@@ -14,17 +14,15 @@ class Config:
     SUPER_OPERATOR = os.getenv('SUPER_OPERATOR', 'ghoulyonok')
     MAX_WARN = int(os.getenv('MAX_WARN', 3))
     DEFAULT_BAN_TIME = int(os.getenv('DEFAULT_BAN_TIME', 0))
+    AUTH_CODE_EXPIRE_TIME = int(os.getenv('AUTH_CODE_EXPIRE_TIME', 300))
 
     # Директории
     DATA_DIR = os.getenv('DATA_DIR', 'data')
     LOGS_DIR = os.getenv('LOGS_DIR', 'logs')
     BOTS_DIR = os.getenv('BOTS_DIR', 'bots')
 
-    # Файлы данных
-    USERS_FILE = os.path.join(DATA_DIR, 'users.json')
-    BOTS_FILE = os.path.join(DATA_DIR, 'bots_data.json')
-    ADMINS_FILE = os.path.join(DATA_DIR, 'admins.json')
-    BANNED_FILE = os.path.join(DATA_DIR, 'banned.json')
+    # Файл базы данных
+    DB_FILE = os.path.join(DATA_DIR, 'system.db')
 
     @classmethod
     def setup_directories(cls):

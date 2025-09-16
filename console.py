@@ -1,6 +1,6 @@
 import sys
 import threading
-from database import Database
+from database import db_instance as Database
 from utils import Utils
 from config import logger
 

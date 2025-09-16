@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import asyncio
 from config import Config, logger
-from database import Database
+from database import db_instance as Database
 from utils import Utils
 import os
 
@@ -232,20 +232,14 @@ class DiscordBot:
             }.get(user_data.get('rank', 'user'), '👤 User')
 
             banned_status = "🚫 Banned" if Database.is_banned(target_username) else "✅ Active"
-
-            if user_data['rank'] in ['gadmin', 'operator']:
-                info_text = (
-                    f"📧 Username: @{target_username}\n"
-                    f"👨‍💼 Rank: {rank_text}\n"
-                    f"🆔 ID: `{user_data['id']}`\n"
-                    f"📛 Name: {user_data['first_name']}"
-                )
-            else:
-                info_text = (
-                    f"📧 Username: @{target_username}\n"
-                    f"👨‍💼 Rank: {rank_text}\n"
-                    f"🆔 ID: `{user_data['id']}`\n"
-                    f"📛 Name: {user_data['first_name']}\n"
+            info_text = (
+                f"📧 Username: @{target_username}\n"
+                f"👨‍💼 Rank: {rank_text}\n"
+                f"🆔 ID: `{user_data['user_id']}`\n"
+                f"📛 Name: {user_data['first_name']}"
+            )
+            if not user_data['rank'] in ['gadmin', 'operator']:
+                info_text += (
                     f"📊 Status: {banned_status}\n"
                     f"💢 Warnings: {user_data['warns']}/{Config.MAX_WARN}"
                 )

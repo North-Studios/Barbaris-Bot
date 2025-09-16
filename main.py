@@ -4,7 +4,7 @@ from config import Config, logger
 from handlers import Handlers
 from console import ConsoleHandler
 from discord_bot import start_discord_bot
-from utils import Utils  # Добавляем импорт
+from utils import Utils
 
 
 def main():

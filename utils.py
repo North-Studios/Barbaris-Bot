@@ -2,7 +2,7 @@ import re
 import subprocess
 import psutil
 import os
-from database import Database
+from database import db_instance
 from config import Config, logger
 
 telegram_bot = None
@@ -23,14 +23,13 @@ class Utils:
     @staticmethod
     def get_bot_status(bot_name):
         """Проверка статуса бота"""
-        bots = Database.load_bots()
-        bot = bots.get(bot_name)
+        bot = db_instance.get_bot(bot_name)
 
-        if not bot or not bot.get('exe'):
+        if not bot or not bot.get('exe_path'):
             return "not_found"
 
         try:
-            exe_path = bot['exe']
+            exe_path = bot['exe_path']
             exe_name = os.path.basename(exe_path)
 
             for process in psutil.process_iter(['name', 'exe']):
@@ -44,17 +43,17 @@ class Utils:
     @staticmethod
     def start_bot(bot_name):
         """Запуск бота"""
-        bots = Database.load_bots()
-        bot = bots.get(bot_name)
+        bot = db_instance.get_bot(bot_name)
 
-        if not bot or not bot.get('exe'):
+        if not bot or not bot.get('exe_path'):
             return False, "❌ Бот не найден"
 
         try:
             if Utils.get_bot_status(bot_name) == "running":
                 return False, "❌ Бот уже запущен"
 
-            subprocess.Popen([bot['exe']])
+            subprocess.Popen([bot['exe_path']])
+            db_instance.update_bot_state(bot_name, True)
             return True, "✅ Бот запущен"
         except Exception as e:
             return False, f"❌ Ошибка запуска: {e}"
@@ -62,13 +61,12 @@ class Utils:
     @staticmethod
     def stop_bot(bot_name):
         """Остановка бота"""
-        bots = Database.load_bots()
-        bot = bots.get(bot_name)
+        bot = db_instance.get_bot(bot_name)
 
         if not bot:
             return False, "❌ Бот не найден"
 
-        exe_path = bot.get('exe')
+        exe_path = bot.get('exe_path')
         if not exe_path:
             return False, "❌ Путь к exe не указан"
 
@@ -82,6 +80,7 @@ class Utils:
                     process_found = True
 
             if process_found:
+                db_instance.update_bot_state(bot_name, False)
                 return True, "✅ Бот остановлен"
             else:
                 return False, "❌ Бот не был запущен"
@@ -91,17 +90,17 @@ class Utils:
     @staticmethod
     def get_stats():
         """Получение статистики"""
-        users = Database.load_users()
-        bots = Database.load_bots()
-        admins = Database.load_admins()
-        banned_data = Database.load_banned()
+        users = db_instance.get_all_users()
+        bots = db_instance.get_all_bots()
+        operators = db_instance.get_all_operators()
+        global_admins = db_instance.get_all_global_admins()
 
         total_users = len(users)
-        banned_users = len(banned_data)
+        banned_users = sum(1 for user in users if user['banned'])
 
         running_bots = 0
-        for bot_name in bots:
-            if Utils.get_bot_status(bot_name) == "running":
+        for bot in bots:
+            if Utils.get_bot_status(bot['name']) == "running":
                 running_bots += 1
 
         return f"""📊 <b>Статистика системы</b>
@@ -114,8 +113,8 @@ class Utils:
 ▶️ Активных ботов: {running_bots}
 ⏹️ Остановленных: {len(bots) - running_bots}
 
-👑 Глобальных админов: {len(admins.get('global_admins', []))}
-⚡ Операторов: {len(admins.get('operators', []))}"""
+👑 Глобальных админов: {len(global_admins)}
+⚡ Операторов: {len(operators)}"""
 
     @staticmethod
     def format_user_list(users, list_type):
@@ -138,9 +137,9 @@ class Utils:
         result = [f"<b>{emoji[list_type]} {title[list_type]}</b>\n"]
 
         for i, username in enumerate(users, 1):
-            user = Database.get_user(username)
+            user = db_instance.get_user(username)
             if user:
-                status = "🚫" if Database.is_banned(username) else "✅"
+                status = "🚫" if user['banned'] else "✅"
                 result.append(f"{i}. @{username} {status}")
             else:
                 result.append(f"{i}. @{username} (нет в базе)")
@@ -155,18 +154,6 @@ class Utils:
         return f"{ban_time} часов"
 
     @staticmethod
-    def send_message_to_user(bot, username, message):
-        """Отправка сообщения пользователю в ЛС"""
-        try:
-            user = Database.get_user(username)
-            if user and user.get('id'):
-                bot.send_message(user['id'], message)
-                return True
-        except Exception as e:
-            logger.error(f"Error sending message to {username}: {e}")
-        return False
-
-    @staticmethod
     def set_telegram_bot(bot_instance):
         """Установка экземпляра Telegram бота для отправки сообщений"""
         global telegram_bot
@@ -176,13 +163,13 @@ class Utils:
     def send_message_to_user(bot, username, message):
         """Отправка сообщения пользователю в ЛС через Telegram"""
         try:
-            user = Database.get_user(username)
-            if user and user.get('id'):
+            user = db_instance.get_user(username)
+            if user and user.get('user_id'):
                 # Используем глобальный экземпляр бота если не передан
                 if bot is None and telegram_bot is not None:
-                    telegram_bot.send_message(user['id'], message, parse_mode='HTML')
+                    telegram_bot.send_message(user['user_id'], message, parse_mode='HTML')
                 elif bot is not None:
-                    bot.send_message(user['id'], message, parse_mode='HTML')
+                    bot.send_message(user['user_id'], message, parse_mode='HTML')
                 return True
         except Exception as e:
             logger.error(f"Error sending message to {username}: {e}")

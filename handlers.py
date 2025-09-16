@@ -2,7 +2,7 @@ import os
 from telebot import *
 from telebot.types import Message, CallbackQuery
 from config import Config, logger
-from database import Database
+from database import db_instance as Database
 from keyboards import Keyboards
 from utils import Utils
 
@@ -61,7 +61,7 @@ class Handlers:
             self.handle_alarm(message)
 
         @self.bot.message_handler(commands=['chatid'])
-        def handle_start(message: Message):
+        def handle_chatid(message: Message):
             """Обработка команды /chatid"""
             self.bot.send_message(message.chat.id, f"🔐 CHAT ID 🔐\n\n"
                                                    f"<code>{message.chat.id}</code>",
@@ -143,7 +143,7 @@ class Handlers:
             self.bot.reply_to(message, "❌ Только операторы могут просматривать список ботов!")
             return
 
-        bots = Database.load_bots()
+        bots = Database.get_all_bots()
         if not bots:
             self.bot.reply_to(message, "❌ Нет добавленных ботов!")
             return
@@ -158,6 +158,7 @@ class Handlers:
 
     def handle_start(self, message: Message):
         """Обработка команды /start"""
+
         username = message.from_user.username
         user_id = message.from_user.id
         first_name = message.from_user.first_name
@@ -166,15 +167,14 @@ class Handlers:
             self.bot.reply_to(message, "❌ У вас не установлен username! Установите его в настройках Telegram.")
             return
 
-        # Проверяем, есть ли пользователь в системе
-        if not Database.user_exists(username):
-            self.bot.reply_to(message, "❌ Вы не зарегистрированы в системе! Обратитесь к администратору.")
-            return
-
         # Проверяем бан
         if Database.is_banned(username):
             self.bot.reply_to(message, "🚫 Вы забанены и не можете использовать бота.")
             return
+
+        if not Database.user_exists(username):
+            Database.add_user(user_id, username, first_name)
+            logger.info(f"New user @{username}")
 
         # Отправляем приветствие в зависимости от роли
         rank = Database.get_user_rank(username)
@@ -225,22 +225,15 @@ class Handlers:
         }.get(user_data.get('rank', 'user'), '👤 Пользователь')
 
         banned_status = "🚫 Забанен" if Database.is_banned(username) else "✅ Активен"
-
-        if user_data['rank'] in ['gadmin', 'operator']:
-            info_text = (
-                "👤 <b>Информация о пользователе</b>\n\n"
-                f"📧 Username: @{username}\n"
-                f"👨‍💼 Ранг: {rank_text}\n"
-                f"🆔 ID: <code>{user_data['id']}</code>\n"
-                f"📛 Имя: {user_data['first_name']}"
-            )
-        else:
-            info_text = (
-                "👤 <b>Информация о пользователе</b>\n\n"
-                f"📧 Username: @{username}\n"
-                f"👨‍💼 Ранг: {rank_text}\n"
-                f"🆔 ID: <code>{user_data['id']}</code>\n"
-                f"📛 Имя: {user_data['first_name']}\n"
+        info_text = (
+            "👤 <b>Информация о пользователе</b>\n\n"
+            f"📧 Username: @{username}\n"
+            f"👨‍💼 Ранг: {rank_text}\n"
+            f"🆔 ID: <code>{user_data['user_id']}</code>\n"
+            f"📛 Имя: {user_data['first_name']}"
+        )
+        if not user_data['rank'] in ['gadmin', 'operator']:
+            info_text += (
                 f"📊 Ограничения: {banned_status}\n"
                 f"💢 Предупреждения: {user_data['warns']}/{Config.MAX_WARN}"
             )
@@ -667,7 +660,7 @@ class Handlers:
 
         if list_type == 'ladmin':
             # Собираем всех локальных админов из всех ботов
-            bots = Database.load_bots()
+            bots = Database.get_all_bots()
             all_ladmins = set()
             for bot in bots.values():
                 all_ladmins.update(bot.get('ladmins', []))
@@ -721,7 +714,7 @@ class Handlers:
 
         if rank == 'ladmin':
             # Для локальных админов показываем выбор бота
-            bots = Database.load_bots()
+            bots = Database.get_all_bots()
             if not bots:
                 self.bot.answer_callback_query(call.id, "❌ Нет доступных ботов!")
                 return
@@ -776,7 +769,7 @@ class Handlers:
     @staticmethod
     def get_bot_selection_keyboard():
         """Клавиатура выбора бота для локального админа"""
-        bots = Database.load_bots()
+        bots = Database.get_all_bots()
         keyboard = types.InlineKeyboardMarkup(row_width=2)
 
         for bot_name in bots.keys():
@@ -901,7 +894,7 @@ class Handlers:
 
     def handle_start_bot(self, message: Message, bot_name: str):
         """Обработка запуска бота"""
-        bots = Database.load_bots()
+        bots = Database.get_all_bots()
 
         if bot_name not in bots:
             self.bot.reply_to(message, f"❌ Бот '{bot_name}' не найден!")
@@ -933,7 +926,7 @@ class Handlers:
 
     def handle_stop_bot(self, message: Message, bot_name: str):
         """Обработка остановки бота"""
-        bots = Database.load_bots()
+        bots = Database.get_all_bots()
 
         if bot_name not in bots:
             self.bot.reply_to(message, f"❌ Бот '{bot_name}' не найден!")

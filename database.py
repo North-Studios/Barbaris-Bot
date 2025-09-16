@@ -1,316 +1,429 @@
-import json
-import os
+import sqlite3
 import time
 from config import Config, logger
 
 
 class Database:
-    @staticmethod
-    def load_data(file_path, default_data=None):
-        """Загрузка данных из JSON файла"""
-        if default_data is None:
-            default_data = {}
+    def __init__(self):
+        self.db_file = Config.DB_FILE
+        self.init_database()
 
-        try:
-            if os.path.exists(file_path):
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            return default_data
-        except Exception as e:
-            logger.error(f"Error loading {file_path}: {e}")
-            return default_data
+    def get_connection(self):
+        """Получение соединения с базой данных"""
+        conn = sqlite3.connect(self.db_file)
+        conn.row_factory = sqlite3.Row
+        return conn
 
-    @staticmethod
-    def save_data(file_path, data):
-        """Сохранение данных в JSON файл"""
+    def init_database(self):
+        """Инициализация таблиц базы данных"""
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
-            return True
+            with self.get_connection() as conn:
+                # Таблица пользователей
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS users (
+                        username TEXT PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        first_name TEXT NOT NULL,
+                        rank TEXT NOT NULL DEFAULT 'user',
+                        banned BOOLEAN NOT NULL DEFAULT FALSE,
+                        warns INTEGER NOT NULL DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+
+                # Таблица ботов
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS bots (
+                        name TEXT PRIMARY KEY,
+                        exe_path TEXT NOT NULL,
+                        username TEXT NOT NULL,
+                        state BOOLEAN NOT NULL DEFAULT FALSE,
+                        type TEXT NOT NULL DEFAULT 'Standard',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+
+                # Таблица локальных администраторов ботов
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS bot_ladmins (
+                        bot_name TEXT NOT NULL,
+                        username TEXT NOT NULL,
+                        PRIMARY KEY (bot_name, username),
+                        FOREIGN KEY (bot_name) REFERENCES bots (name) ON DELETE CASCADE,
+                        FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+                    )
+                ''')
+
+                # Таблица глобальных администраторов
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS global_admins (
+                        username TEXT PRIMARY KEY,
+                        FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+                    )
+                ''')
+
+                # Таблица операторов
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS operators (
+                        username TEXT PRIMARY KEY,
+                        FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+                    )
+                ''')
+
+                # Таблица банов
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS bans (
+                        username TEXT PRIMARY KEY,
+                        banned_by TEXT NOT NULL,
+                        banned_at INTEGER NOT NULL,
+                        ban_time INTEGER NOT NULL DEFAULT 0,
+                        reason TEXT,
+                        FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+                    )
+                ''')
+
+                # Таблица кодов аутентификации
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS auth_codes (
+                        code TEXT PRIMARY KEY,
+                        username TEXT NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        used BOOLEAN NOT NULL DEFAULT FALSE,
+                        FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+                    )
+                ''')
+
+                conn.commit()
+                logger.info("Database initialized successfully")
+
         except Exception as e:
-            logger.error(f"Error saving {file_path}: {e}")
+            logger.error(f"Error initializing database: {e}")
+            raise
+
+    # User methods
+    def add_user(self, user_id, username, first_name):
+        """Добавление пользователя"""
+        try:
+            with self.get_connection() as conn:
+                conn.execute(
+                    'INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)',
+                    (user_id, username.lower(), first_name)
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error adding user: {e}")
             return False
 
-    # Users methods
-    @staticmethod
-    def load_users():
-        return Database.load_data(Config.USERS_FILE, {})
-
-    @staticmethod
-    def save_users(users):
-        return Database.save_data(Config.USERS_FILE, users)
-
-    # Bots methods
-    @staticmethod
-    def load_bots():
-        return Database.load_data(Config.BOTS_FILE, {})
-
-    @staticmethod
-    def save_bots(bots):
-        return Database.save_data(Config.BOTS_FILE, bots)
-
-    # Admins methods
-    @staticmethod
-    def load_admins():
-        default = {
-            "global_admins": [],
-            "operators": []
-        }
-        return Database.load_data(Config.ADMINS_FILE, default)
-
-    @staticmethod
-    def save_admins(admins):
-        return Database.save_data(Config.ADMINS_FILE, admins)
-
-    # Banned methods
-    @staticmethod
-    def load_banned():
-        return Database.load_data(Config.BANNED_FILE, {})
-
-    @staticmethod
-    def save_banned(banned):
-        return Database.save_data(Config.BANNED_FILE, banned)
-
-    # User management
-    @staticmethod
-    def add_user(user_id, username, first_name):
-        """Добавление пользователя"""
-        users = Database.load_users()
-        username_lower = username.lower()
-
-        if username_lower not in users:
-            users[username_lower] = {
-                "id": user_id,
-                "first_name": first_name,
-                "rank": "user",
-                "banned": False,
-                "warns": 0
-            }
-            Database.save_users(users)
-            return True
-        return False
-
-    @staticmethod
-    def get_user(username):
+    def get_user(self, username):
         """Получение пользователя"""
-        users = Database.load_users()
-        username_lower = username.lower().replace('@', '')
-        return users.get(username_lower)
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    'SELECT * FROM users WHERE username = ?',
+                    (username.lower(),)
+                )
+                result = cursor.fetchone()
+                return dict(result) if result else None
+        except Exception as e:
+            logger.error(f"Error getting user: {e}")
+            return None
 
-    @staticmethod
-    def update_user(username, updates):
+    def update_user(self, username, updates):
         """Обновление пользователя"""
-        users = Database.load_users()
-        username_lower = username.lower().replace('@', '')
+        try:
+            with self.get_connection() as conn:
+                set_clause = ', '.join([f"{key} = ?" for key in updates.keys()])
+                values = list(updates.values()) + [username.lower()]
 
-        if username_lower in users:
-            users[username_lower].update(updates)
-            Database.save_users(users)
-            return True
-        return False
-
-    @staticmethod
-    def is_banned(username):
-        """Проверка бана"""
-        banned_data = Database.load_banned()
-        username_lower = username.lower().replace('@', '')
-
-        if username_lower in banned_data:
-            ban_info = banned_data[username_lower]
-            ban_time = ban_info.get('ban_time', 0)
-            banned_at = ban_info.get('banned_at', 0)
-
-            # Проверяем временный бан
-            if ban_time > 0:
-                current_time = int(time.time())
-                if current_time - banned_at >= ban_time * 3600:
-                    # Время бана истекло, разбаниваем
-                    Database.unban_user(username_lower)
-                    return False
+                conn.execute(
+                    f'UPDATE users SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE username = ?',
+                    values
+                )
+                conn.commit()
                 return True
-            # Перманентный бан
-            return True
-        return False
+        except Exception as e:
+            logger.error(f"Error updating user: {e}")
+            return False
 
-    @staticmethod
-    def get_user_rank(username):
-        """Получение ранга пользователя"""
-        user = Database.get_user(username)
-        return user.get('rank', 'user') if user else None
+    def user_exists(self, username):
+        """Проверка существования пользователя"""
+        return self.get_user(username) is not None
 
-    @staticmethod
-    def get_user_warns(username):
-        """Получение количества предупреждений"""
-        user = Database.get_user(username)
-        return user.get('warns', 0) if user else 0
+    def get_all_users(self):
+        """Получение всех пользователей"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute('SELECT * FROM users')
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting all users: {e}")
+            return []
+
+    # Ban methods
+    def is_banned(self, username):
+        """Проверка бана"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    'SELECT * FROM bans WHERE username = ?',
+                    (username.lower(),)
+                )
+                ban_info = cursor.fetchone()
+
+                if not ban_info:
+                    return False
+
+                ban_info = dict(ban_info)
+                ban_time = ban_info.get('ban_time', 0)
+                banned_at = ban_info.get('banned_at', 0)
+
+                # Проверяем временный бан
+                if ban_time > 0:
+                    current_time = int(time.time())
+                    if current_time - banned_at >= ban_time * 3600:
+                        # Время бана истекло, разбаниваем
+                        self.unban_user(username)
+                        return False
+                    return True
+                # Перманентный бан
+                return True
+        except Exception as e:
+            logger.error(f"Error checking ban: {e}")
+            return False
+
+    def ban_user(self, username, banned_by, ban_time=0, reason=""):
+        """Бан пользователя"""
+        try:
+            with self.get_connection() as conn:
+                # Обновляем пользователя
+                conn.execute(
+                    'UPDATE users SET banned = TRUE, rank = "user", warns = 0 WHERE username = ?',
+                    (username.lower(),)
+                )
+
+                # Удаляем из админов/операторов если нужно
+                conn.execute('DELETE FROM global_admins WHERE username = ?', (username.lower(),))
+                conn.execute('DELETE FROM operators WHERE username = ?', (username.lower(),))
+
+                # Добавляем запись о бане
+                conn.execute(
+                    'INSERT OR REPLACE INTO bans (username, banned_by, banned_at, ban_time, reason) VALUES (?, ?, ?, ?, ?)',
+                    (username.lower(), banned_by.lower(), int(time.time()), ban_time, reason)
+                )
+
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error banning user: {e}")
+            return False
+
+    def unban_user(self, username):
+        """Разбан пользователя"""
+        try:
+            with self.get_connection() as conn:
+                # Обновляем пользователя
+                conn.execute(
+                    'UPDATE users SET banned = FALSE WHERE username = ?',
+                    (username.lower(),)
+                )
+
+                # Удаляем запись о бане
+                conn.execute(
+                    'DELETE FROM bans WHERE username = ?',
+                    (username.lower(),)
+                )
+
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error unbanning user: {e}")
+            return False
+
+    def get_ban_info(self, username):
+        """Получение информации о бане"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    'SELECT * FROM bans WHERE username = ?',
+                    (username.lower(),)
+                )
+                result = cursor.fetchone()
+                return dict(result) if result else None
+        except Exception as e:
+            logger.error(f"Error getting ban info: {e}")
+            return None
 
     # Admin management
-    @staticmethod
-    def is_operator(username):
+    def is_operator(self, username):
         """Проверка оператора"""
-        if not username:
-            return False
-        admins = Database.load_admins()
-        username_lower = username.lower().replace('@', '')
-        return (username_lower in admins.get('operators', []) or
-                username_lower == Config.SUPER_OPERATOR)
+        if not username or username.lower() == Config.SUPER_OPERATOR:
+            return username and username.lower() == Config.SUPER_OPERATOR
 
-    @staticmethod
-    def is_global_admin(username):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    'SELECT 1 FROM operators WHERE username = ?',
+                    (username.lower(),)
+                )
+                return cursor.fetchone() is not None
+        except Exception as e:
+            logger.error(f"Error checking operator: {e}")
+            return False
+
+    def is_global_admin(self, username):
         """Проверка глобального админа"""
         if not username:
             return False
-        admins = Database.load_admins()
-        username_lower = username.lower().replace('@', '')
-        return (username_lower in admins.get('global_admins', []) or
-                Database.is_operator(username_lower))
+        if self.is_operator(username):
+            return True
 
-    @staticmethod
-    def is_local_admin(username, bot_name=None):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    'SELECT 1 FROM global_admins WHERE username = ?',
+                    (username.lower(),)
+                )
+                return cursor.fetchone() is not None
+        except Exception as e:
+            logger.error(f"Error checking global admin: {e}")
+            return False
+
+    def is_local_admin(self, username, bot_name=None):
         """Проверка локального админа"""
         if not username:
             return False
 
-        if Database.is_global_admin(username):
+        if self.is_global_admin(username):
             return True
 
         if bot_name:
-            bots = Database.load_bots()
-            username_lower = username.lower().replace('@', '')
-            bot = bots.get(bot_name)
-            return bot and username_lower in bot.get('ladmins', [])
+            try:
+                with self.get_connection() as conn:
+                    cursor = conn.execute(
+                        'SELECT 1 FROM bot_ladmins WHERE bot_name = ? AND username = ?',
+                        (bot_name, username.lower())
+                    )
+                    return cursor.fetchone() is not None
+            except Exception as e:
+                logger.error(f"Error checking local admin: {e}")
+                return False
         return False
 
-    @staticmethod
-    def add_operator(username):
+    def add_operator(self, username):
         """Добавление оператора"""
         if not username or username.lower() == Config.SUPER_OPERATOR:
             return False
 
-        if Database.is_banned(username):
+        if self.is_banned(username):
             return False
 
-        user = Database.get_user(username)
-        if not user:
+        if not self.user_exists(username):
             return False
 
-        admins = Database.load_admins()
-        username_lower = username.lower().replace('@', '')
+        try:
+            with self.get_connection() as conn:
+                # Добавляем в операторы
+                conn.execute(
+                    'INSERT OR IGNORE INTO operators (username) VALUES (?)',
+                    (username.lower(),)
+                )
 
-        if username_lower not in admins['operators']:
-            admins['operators'].append(username_lower)
-            Database.save_admins(admins)
-            Database.update_user(username, {'rank': 'operator'})
-            return True
-        return False
+                # Обновляем ранг пользователя
+                conn.execute(
+                    'UPDATE users SET rank = "operator" WHERE username = ?',
+                    (username.lower(),)
+                )
 
-    @staticmethod
-    def remove_operator(username):
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error adding operator: {e}")
+            return False
+
+    def remove_operator(self, username):
         """Удаление оператора"""
         if not username or username.lower() == Config.SUPER_OPERATOR:
             return False
 
-        admins = Database.load_admins()
-        username_lower = username.lower().replace('@', '')
+        try:
+            with self.get_connection() as conn:
+                # Удаляем из операторов
+                conn.execute(
+                    'DELETE FROM operators WHERE username = ?',
+                    (username.lower(),)
+                )
 
-        if username_lower in admins['operators']:
-            admins['operators'].remove(username_lower)
-            Database.save_admins(admins)
-            Database.update_user(username, {'rank': 'user'})
-            return True
-        return False
+                # Обновляем ранг пользователя
+                conn.execute(
+                    'UPDATE users SET rank = "user" WHERE username = ?',
+                    (username.lower(),)
+                )
 
-    @staticmethod
-    def add_global_admin(username):
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error removing operator: {e}")
+            return False
+
+    def add_global_admin(self, username):
         """Добавление глобального админа"""
-        if not username or Database.is_banned(username):
+        if not username or self.is_banned(username):
             return False
 
-        user = Database.get_user(username)
-        if not user:
+        if not self.user_exists(username):
             return False
 
-        admins = Database.load_admins()
-        username_lower = username.lower().replace('@', '')
+        try:
+            with self.get_connection() as conn:
+                # Добавляем в глобальные админы
+                conn.execute(
+                    'INSERT OR IGNORE INTO global_admins (username) VALUES (?)',
+                    (username.lower(),)
+                )
 
-        if username_lower not in admins['global_admins']:
-            admins['global_admins'].append(username_lower)
-            Database.save_admins(admins)
-            Database.update_user(username, {'rank': 'gadmin'})
-            return True
-        return False
+                # Обновляем ранг пользователя
+                conn.execute(
+                    'UPDATE users SET rank = "gadmin" WHERE username = ?',
+                    (username.lower(),)
+                )
 
-    @staticmethod
-    def remove_global_admin(username):
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error adding global admin: {e}")
+            return False
+
+    def remove_global_admin(self, username):
         """Удаление глобального админа"""
         if not username:
             return False
 
-        admins = Database.load_admins()
-        username_lower = username.lower().replace('@', '')
+        try:
+            with self.get_connection() as conn:
+                # Удаляем из глобальных админов
+                conn.execute(
+                    'DELETE FROM global_admins WHERE username = ?',
+                    (username.lower(),)
+                )
 
-        if username_lower in admins['global_admins']:
-            admins['global_admins'].remove(username_lower)
-            Database.save_admins(admins)
-            Database.update_user(username, {'rank': 'user'})
-            return True
-        return False
+                # Обновляем ранг пользователя
+                conn.execute(
+                    'UPDATE users SET rank = "user" WHERE username = ?',
+                    (username.lower(),)
+                )
 
-    # Ban management
-    @staticmethod
-    def ban_user(username, banned_by, ban_time=0):
-        """Бан пользователя"""
-        user = Database.get_user(username)
-        if not user:
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error removing global admin: {e}")
             return False
 
-        banned_data = Database.load_banned()
-        username_lower = username.lower().replace('@', '')
-
-        if Database.get_user_rank(username) == 'gadmin':
-            Database.remove_global_admin(username)
-
-        banned_data[username_lower] = {
-            "banned_by": banned_by.lower().replace('@', ''),
-            "banned_at": int(time.time()),
-            "ban_time": ban_time
-        }
-
-        # Обновляем пользователя
-        Database.update_user(username, {
-            'banned': True,
-            'rank': 'user',
-            'warns': 0
-        })
-
-        return Database.save_banned(banned_data)
-
-    @staticmethod
-    def unban_user(username):
-        """Разбан пользователя"""
-        banned_data = Database.load_banned()
-        username_lower = username.lower().replace('@', '')
-
-        if username_lower in banned_data:
-            del banned_data[username_lower]
-            Database.save_banned(banned_data)
-
-        # Обновляем пользователя
-        Database.update_user(username, {'banned': False})
-        return True
-
-    @staticmethod
-    def get_ban_info(username):
-        """Получение информации о бане"""
-        banned_data = Database.load_banned()
-        username_lower = username.lower().replace('@', '')
-        return banned_data.get(username_lower)
-
     # Warn management
-    @staticmethod
-    def add_warn(username, warned_by, reason=""):
+    def add_warn(self, username, warned_by, reason=""):
         """Добавление предупреждения"""
-        user = Database.get_user(username)
+        user = self.get_user(username)
         if not user:
             return False, "User not found"
 
@@ -318,133 +431,313 @@ class Database:
         if current_warns >= Config.MAX_WARN:
             return False, "Max warns reached"
 
-        Database.update_user(username, {'warns': current_warns + 1})
+        # Обновляем количество варнов
+        if not self.update_user(username, {'warns': current_warns + 1}):
+            return False, "Error updating warns"
 
         # Проверяем, не достиг ли пользователь максимума варнов
         if current_warns + 1 >= Config.MAX_WARN:
-            Database.ban_user(username, warned_by, Config.DEFAULT_BAN_TIME)
+            self.ban_user(username, warned_by, Config.DEFAULT_BAN_TIME, reason)
             return True, "banned"
 
         return True, "warned"
 
-    @staticmethod
-    def remove_warn(username):
+    def remove_warn(self, username):
         """Удаление предупреждения"""
-        user = Database.get_user(username)
+        user = self.get_user(username)
         if not user:
             return False
 
         current_warns = user.get('warns', 0)
         if current_warns > 0:
-            Database.update_user(username, {'warns': current_warns - 1})
-            return True
+            return self.update_user(username, {'warns': current_warns - 1})
         return False
 
     # Bot management
-    @staticmethod
-    def add_bot(bot_name, exe_path, bot_username, bot_type="Standard"):
+    def add_bot(self, bot_name, exe_path, bot_username, bot_type="Standard"):
         """Добавление бота"""
-        bots = Database.load_bots()
-
-        if bot_name in bots:
+        try:
+            with self.get_connection() as conn:
+                conn.execute(
+                    'INSERT INTO bots (name, exe_path, username, type) VALUES (?, ?, ?, ?)',
+                    (bot_name, exe_path, bot_username, bot_type)
+                )
+                conn.commit()
+                return True
+        except sqlite3.IntegrityError:
+            return False  # Бот уже существует
+        except Exception as e:
+            logger.error(f"Error adding bot: {e}")
             return False
 
-        bots[bot_name] = {
-            'exe': exe_path,
-            'ladmins': [],
-            'username': bot_username,
-            'state': False,
-            'type': bot_type
-        }
-        return Database.save_bots(bots)
-
-    @staticmethod
-    def remove_bot(bot_name):
+    def remove_bot(self, bot_name):
         """Удаление бота"""
-        bots = Database.load_bots()
+        try:
+            with self.get_connection() as conn:
+                conn.execute(
+                    'DELETE FROM bots WHERE name = ?',
+                    (bot_name,)
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error removing bot: {e}")
+            return False
 
-        if bot_name in bots:
-            del bots[bot_name]
-            return Database.save_bots(bots)
-        return False
+    def get_bot(self, bot_name):
+        """Получение бота"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    'SELECT * FROM bots WHERE name = ?',
+                    (bot_name,)
+                )
+                result = cursor.fetchone()
+                return dict(result) if result else None
+        except Exception as e:
+            logger.error(f"Error getting bot: {e}")
+            return None
 
-    @staticmethod
-    def add_ladmin_to_bot(username, bot_name):
+    def get_all_bots(self):
+        """Получение всех ботов"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute('SELECT * FROM bots')
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting all bots: {e}")
+            return []
+
+    def update_bot_state(self, bot_name, state):
+        """Обновление состояния бота"""
+        try:
+            with self.get_connection() as conn:
+                conn.execute(
+                    'UPDATE bots SET state = ? WHERE name = ?',
+                    (state, bot_name)
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error updating bot state: {e}")
+            return False
+
+    # Local admin management
+    def add_ladmin_to_bot(self, username, bot_name):
         """Добавление локального админа к боту"""
-        if not username or Database.is_banned(username):
+        if not username or self.is_banned(username):
             return False
 
-        user = Database.get_user(username)
-        if not user:
+        if not self.user_exists(username):
             return False
 
-        bots = Database.load_bots()
-        bot = bots.get(bot_name)
-
-        if not bot:
+        if not self.get_bot(bot_name):
             return False
 
-        username_lower = username.lower().replace('@', '')
+        try:
+            with self.get_connection() as conn:
+                # Добавляем как локального админа
+                conn.execute(
+                    'INSERT OR IGNORE INTO bot_ladmins (bot_name, username) VALUES (?, ?)',
+                    (bot_name, username.lower())
+                )
 
-        if username_lower not in bot['ladmins']:
-            bot['ladmins'].append(username_lower)
-            Database.save_bots(bots)
-            Database.update_user(username, {'rank': 'ladmin'})
-            return True
-        return False
+                # Обновляем ранг пользователя
+                conn.execute(
+                    'UPDATE users SET rank = "ladmin" WHERE username = ?',
+                    (username.lower(),)
+                )
 
-    @staticmethod
-    def remove_ladmin_from_bot(username, bot_name):
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error adding local admin: {e}")
+            return False
+
+    def remove_ladmin_from_bot(self, username, bot_name):
         """Удаление локального админа из бота"""
-        bots = Database.load_bots()
-        bot = bots.get(bot_name)
+        try:
+            with self.get_connection() as conn:
+                # Удаляем из локальных админов
+                conn.execute(
+                    'DELETE FROM bot_ladmins WHERE bot_name = ? AND username = ?',
+                    (bot_name, username.lower())
+                )
 
-        if not bot:
+                # Проверяем, есть ли у пользователя другие права
+                cursor = conn.execute(
+                    'SELECT 1 FROM bot_ladmins WHERE username = ?',
+                    (username.lower(),)
+                )
+                has_other_ladmin = cursor.fetchone() is not None
+
+                cursor = conn.execute(
+                    'SELECT 1 FROM global_admins WHERE username = ?',
+                    (username.lower(),)
+                )
+                has_global_admin = cursor.fetchone() is not None
+
+                cursor = conn.execute(
+                    'SELECT 1 FROM operators WHERE username = ?',
+                    (username.lower(),)
+                )
+                has_operator = cursor.fetchone() is not None
+
+                # Обновляем ранг только если нет других прав
+                if not has_other_ladmin and not has_global_admin and not has_operator:
+                    conn.execute(
+                        'UPDATE users SET rank = "user" WHERE username = ?',
+                        (username.lower(),)
+                    )
+
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error removing local admin: {e}")
             return False
 
-        username_lower = username.lower().replace('@', '')
+    def get_bot_ladmins(self, bot_name):
+        """Получение локальных админов бота"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    'SELECT username FROM bot_ladmins WHERE bot_name = ?',
+                    (bot_name,)
+                )
+                return [row['username'] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting bot ladmins: {e}")
+            return []
 
-        if username_lower in bot['ladmins']:
-            bot['ladmins'].remove(username_lower)
-            Database.save_bots(bots)
-            Database.update_user(username, {'rank': 'user'})
-            return True
-        return False
+    def get_all_operators(self):
+        """Получение всех операторов"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute('SELECT username FROM operators')
+                return [row['username'] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting operators: {e}")
+            return []
 
-    # User check methods
-    @staticmethod
-    def user_exists(username):
-        """Проверка существования пользователя"""
-        return Database.get_user(username) is not None
+    def get_all_global_admins(self):
+        """Получение всех глобальных админов"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute('SELECT username FROM global_admins')
+                return [row['username'] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting global admins: {e}")
+            return []
 
-    @staticmethod
-    def can_ban_user(issuer_username, target_username):
+    def get_all_ladmins(self):
+        """Получение всех локальных админов"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute('SELECT DISTINCT username FROM bot_ladmins')
+                return [row['username'] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting all ladmins: {e}")
+            return []
+
+    # Auth codes
+    def add_auth_code(self, code, username):
+        """Добавление кода аутентификации"""
+        try:
+            with self.get_connection() as conn:
+                conn.execute(
+                    'INSERT INTO auth_codes (code, username, created_at) VALUES (?, ?, ?)',
+                    (code, username.lower(), int(time.time()))
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error adding auth code: {e}")
+            return False
+
+    def use_auth_code(self, code):
+        """Использование кода аутентификации"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    'UPDATE auth_codes SET used = TRUE WHERE code = ? AND used = FALSE',
+                    (code,)
+                )
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error using auth code: {e}")
+            return False
+
+    def get_auth_code(self, code):
+        """Получение информации о коде"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    'SELECT * FROM auth_codes WHERE code = ?',
+                    (code,)
+                )
+                result = cursor.fetchone()
+                return dict(result) if result else None
+        except Exception as e:
+            logger.error(f"Error getting auth code: {e}")
+            return None
+
+    def cleanup_expired_auth_codes(self):
+        """Очистка просроченных кодов"""
+        try:
+            with self.get_connection() as conn:
+                expire_time = int(time.time()) - Config.AUTH_CODE_EXPIRE_TIME
+                conn.execute(
+                    'DELETE FROM auth_codes WHERE created_at < ? OR used = TRUE',
+                    (expire_time,)
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error cleaning up auth codes: {e}")
+            return False
+
+    # Utility methods
+    def can_ban_user(self, issuer_username, target_username):
         """Проверка прав на бан"""
-        if not Database.user_exists(target_username):
+        if not self.user_exists(target_username):
             return False, "User not found"
 
-        if Database.is_operator(target_username):
+        if self.is_operator(target_username):
             return False, "Cannot ban operators"
 
-        if Database.is_global_admin(target_username):
-            if not Database.is_operator(issuer_username):
+        if self.is_global_admin(target_username):
+            if not self.is_operator(issuer_username):
                 return False, "Only operators can ban global admins"
 
-        issuer_rank = Database.get_user_rank(issuer_username)
-        target_rank = Database.get_user_rank(target_username)
+        issuer_rank = self.get_user(issuer_username).get('rank', 'user')
+        target_rank = self.get_user(target_username).get('rank', 'user')
 
         if issuer_rank == 'gadmin' and target_rank in ['gadmin', 'operator']:
             return False, "Insufficient permissions"
 
         return True, ""
 
-    @staticmethod
-    def can_warn_user(issuer_username, target_username):
+    def can_warn_user(self, issuer_username, target_username):
         """Проверка прав на варн"""
-        if not Database.user_exists(target_username):
+        if not self.user_exists(target_username):
             return False, "User not found"
 
-        if Database.is_operator(target_username) or Database.is_global_admin(target_username):
+        if self.is_operator(target_username) or self.is_global_admin(target_username):
             return False, "Cannot warn operators or global admins"
 
         return True, ""
+
+    def get_user_rank(self, username):
+        """Получение ранга пользователя"""
+        user = self.get_user(username)
+        return user.get('rank', 'user') if user else None
+
+    def get_user_warns(self, username):
+        """Получение количества предупреждений"""
+        user = self.get_user(username)
+        return user.get('warns', 0) if user else 0
+
+
+# Глобальный экземпляр базы данных
+db_instance = Database()
