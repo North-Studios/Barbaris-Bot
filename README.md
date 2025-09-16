@@ -152,7 +152,7 @@ Comprehensive stats including:
 
 ## 🐛 Bug Fixes & Improvements
 
-### Fixed in v5.1:
+### Fixed in v5.2:
 - **Data corruption issues** from JSON file locking
 - **Concurrency problems** with multiple access
 - **Permission escalation** vulnerabilities
@@ -183,9 +183,10 @@ The system will automatically:
 
 ## 📝 Version History
 
-**v5.1** - SQLite database, enhanced management
-**v4.2** - Enhanced Discord role system, granular permissions
-**v4.1** - Initial Discord integration with single "Dev" role
+**v5.2** - Minor updates\
+**v5.1** - SQLite database, enhanced management\
+**v4.2** - Enhanced Discord role system, granular permissions\
+**v4.1** - Initial Discord integration with single "Dev" role\
 **v3.6** - Telegram-only version with basic functionality
 
 ---

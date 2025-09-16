@@ -75,7 +75,7 @@ class DiscordBot:
             if not await self.check_op_role(interaction):
                 return
 
-            users = Database.load_users()
+            users = Database.get_all_users()
             total_count = len(users)
             sent_count = 0
 
@@ -158,7 +158,7 @@ class DiscordBot:
             if not await self.check_op_role(interaction):
                 return
 
-            bots = Database.load_bots()
+            bots = Database.get_all_bots()
             if not bots:
                 await send_error(interaction, "❌ No bots added!")
                 return
@@ -296,10 +296,10 @@ class DiscordBot:
 
             list_type = list_type.lower()
             admins = Database.load_admins()
-            users = Database.load_users()
+            users = Database.get_all_users()
 
             if list_type == 'ladmin':
-                bots = Database.load_bots()
+                bots = Database.get_all_bots()
                 all_ladmins = set()
                 for bot in bots.values():
                     all_ladmins.update(bot.get('ladmins', []))
@@ -386,7 +386,7 @@ class DiscordBot:
             success, result = Utils.start_bot(name)
             if success:
                 # Обновляем статус в базе
-                bots = Database.load_bots()
+                bots = Database.get_all_bots()
                 if name in bots:
                     bots[name]['state'] = True
                     Database.save_bots(bots)
@@ -422,7 +422,7 @@ class DiscordBot:
             success, result = Utils.stop_bot(name)
             if success:
                 # Обновляем статус в базе
-                bots = Database.load_bots()
+                bots = Database.get_all_bots()
                 if name in bots:
                     bots[name]['state'] = False
                     Database.save_bots(bots)
@@ -651,7 +651,7 @@ class RankSelectionView(discord.ui.View):
 
         if rank == "ladmin":
             # Для локальных админов нужно выбрать бота
-            bots = Database.load_bots()
+            bots = Database.get_all_bots()
             if not bots:
                 await send_error(interaction, "❌ No available bots!")
                 return
@@ -689,7 +689,7 @@ class BotSelectionView(discord.ui.View):
 
     def add_bot_buttons(self):
         """Добавляем кнопки для выбора бота"""
-        bots = Database.load_bots()
+        bots = Database.get_all_bots()
         for bot_name in bots.keys():
             self.add_item(BotButton(bot_name, self.target_username))
 
