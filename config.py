@@ -6,7 +6,7 @@ load_dotenv()
 
 
 class Config:
-    bot_version = 5.2
+    bot_version = 5.3
 
     BRB_TOKEN = os.getenv('BRB_TOKEN')
     DS_BRB_TOKEN = os.getenv('DS_BRB_TOKEN')

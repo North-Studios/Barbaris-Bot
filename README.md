@@ -183,6 +183,7 @@ The system will automatically:
 
 ## 📝 Version History
 
+**v5.3** - Minor updates\
 **v5.2** - Minor updates\
 **v5.1** - SQLite database, enhanced management\
 **v4.2** - Enhanced Discord role system, granular permissions\

@@ -29,14 +29,14 @@ class ConsoleHandler:
             if action == "/op":
                 if Database.add_operator(username):
                     print(f"✅ @{username} повышен до оператора")
-                    logger.info(f"CONSOLE: @{username} повышен до оператора")
+                    logger.info(f"CONSOLE: @{username} promoted to operator")
                 else:
                     print(f"❌ Не удалось повысить @{username}")
 
             elif action == "/unop":
                 if Database.remove_operator(username):
                     print(f"✅ @{username} понижен с оператора")
-                    logger.info(f"CONSOLE: @{username} понижен с оператора")
+                    logger.info(f"CONSOLE: @{username} demoted from operator")
                 else:
                     print(f"❌ Не удалось понизить @{username}")
 

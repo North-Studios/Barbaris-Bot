@@ -234,7 +234,7 @@ class Handlers:
         )
         if not user_data['rank'] in ['gadmin', 'operator']:
             info_text += (
-                f"📊 Ограничения: {banned_status}\n"
+                f"\n📊 Ограничения: {banned_status}\n"
                 f"💢 Предупреждения: {user_data['warns']}/{Config.MAX_WARN}"
             )
 
@@ -496,22 +496,16 @@ class Handlers:
 
         banned_status = "🚫 Забанен" if Database.is_banned(target_username) else "✅ Активен"
 
-        if user_data['rank'] in ['gadmin', 'operator']:
-            info_text = (
-                "👤 <b>Информация о пользователе</b>\n\n"
-                f"📧 Username: @{target_username}\n"
-                f"👨‍💼 Ранг: {rank_text}\n"
-                f"🆔 ID: <code>{user_data['id']}</code>\n"
-                f"📛 Имя: {user_data['first_name']}"
-            )
-        else:
-            info_text = (
-                "👤 <b>Информация о пользователе</b>\n\n"
-                f"📧 Username: @{target_username}\n"
-                f"👨‍💼 Ранг: {rank_text}\n"
-                f"🆔 ID: <code>{user_data['id']}</code>\n"
-                f"📛 Имя: {user_data['first_name']}\n"
-                f"📊 Ограничения: {banned_status}\n"
+        info_text = (
+            "👤 <b>Информация о пользователе</b>\n\n"
+            f"📧 Username: @{target_username}\n"
+            f"👨‍💼 Ранг: {rank_text}\n"
+            f"🆔 ID: <code>{user_data['user_id']}</code>\n"
+            f"📛 Имя: {user_data['first_name']}"
+        )
+        if not user_data['rank'] in ['gadmin', 'operator']:
+            info_text += (
+                f"\n📊 Ограничения: {banned_status}\n"
                 f"💢 Предупреждения: {user_data['warns']}/{Config.MAX_WARN}"
             )
 
@@ -584,9 +578,9 @@ class Handlers:
 
         for user_username, user_data in users.items():
             try:
-                if not Database.is_banned(user_username) and 'id' in user_data:
+                if not Database.is_banned(user_username) and 'user_id' in user_data:
                     full_message = f"🚨 <b>Важное уведомление от оператора!</b>\n\n{alarm_message}"
-                    self.bot.send_message(user_data['id'], full_message, parse_mode='HTML')
+                    self.bot.send_message(user_data['user_id'], full_message, parse_mode='HTML')
                     sent_count += 1
 
                     # Обновляем прогресс каждые 10 отправок
