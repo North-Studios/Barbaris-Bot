@@ -164,10 +164,10 @@ class DiscordBot:
                 return
 
             bot_list = ''
-            for i, (bot_name, bot_data) in enumerate(bots.items(), 1):
-                status = Utils.get_bot_status(bot_name)
+            for i, bot in enumerate(bots, 1):
+                status = Utils.get_bot_status(bot)
                 status_emoji = "🟢" if status == "running" else "🔴" if status == "stopped" else "⚫"
-                bot_list += f"{i}. {bot_name} ({bot_data['username']}) {status_emoji}\n"
+                bot_list += f"{i}. {bot.get('name')} ({bot.get('username')}) {status_emoji}\n"
 
             embed = discord.Embed(
                 title="🤖 **Bot List:**\n\n",
@@ -295,19 +295,16 @@ class DiscordBot:
                 return
 
             list_type = list_type.lower()
-            admins = Database.load_admins()
-            users = Database.get_all_users()
+            ladmins = Database.get_all_ladmins()
+            gadmins = Database.get_all_global_admins()
+            operators = Database.get_all_operators()
 
             if list_type == 'ladmin':
-                bots = Database.get_all_bots()
-                all_ladmins = set()
-                for bot in bots.values():
-                    all_ladmins.update(bot.get('ladmins', []))
-                text = Utils.format_user_list(list(all_ladmins), 'ladmin')
+                text = Utils.format_user_list(ladmins, 'ladmin')
             elif list_type == 'gadmin':
-                text = Utils.format_user_list(admins['global_admins'], 'gadmin')
+                text = Utils.format_user_list(gadmins, 'gadmin')
             elif list_type == 'operator':
-                text = Utils.format_user_list(admins['operators'], 'operator')
+                text = Utils.format_user_list(operators, 'operator')
             else:
                 await send_error(interaction, "❌ Unknown list type! Available: ladmin, gadmin, operator")
                 return

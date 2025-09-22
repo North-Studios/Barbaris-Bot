@@ -569,7 +569,7 @@ class Handlers:
             return
 
         alarm_message = parts[1]
-        users = Database.load_users()
+        users = Database.get_all_users()
 
         sent_count = 0
         total_count = len(users)
@@ -649,20 +649,16 @@ class Handlers:
 
     def handle_list_callback(self, call: CallbackQuery, list_type):
         """Обработка callback для списков"""
-        admins = Database.load_admins()
-        users = Database.load_users()
+        ladmins = Database.get_all_ladmins()
+        gadmins = Database.get_all_global_admins()
+        operators = Database.get_all_operators()
 
         if list_type == 'ladmin':
-            # Собираем всех локальных админов из всех ботов
-            bots = Database.get_all_bots()
-            all_ladmins = set()
-            for bot in bots.values():
-                all_ladmins.update(bot.get('ladmins', []))
-            text = Utils.format_user_list(list(all_ladmins), 'ladmin')
+            text = Utils.format_user_list(ladmins, 'ladmin')
         elif list_type == 'gadmin':
-            text = Utils.format_user_list(admins['global_admins'], 'gadmin')
+            text = Utils.format_user_list(gadmins, 'gadmin')
         elif list_type == 'operator':
-            text = Utils.format_user_list(admins['operators'], 'operator')
+            text = Utils.format_user_list(operators, 'operator')
         else:
             text = "❌ Неизвестный тип списка"
 

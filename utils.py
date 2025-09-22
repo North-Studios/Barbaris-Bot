@@ -21,15 +21,14 @@ class Utils:
         return None
 
     @staticmethod
-    def get_bot_status(bot_name):
+    def get_bot_status(bot):
         """Проверка статуса бота"""
-        bot = db_instance.get_bot(bot_name)
 
         if not bot or not bot.get('exe_path'):
             return "not_found"
 
         try:
-            exe_path = bot['exe_path']
+            exe_path = bot.get('exe_path')
             exe_name = os.path.basename(exe_path)
 
             for process in psutil.process_iter(['name', 'exe']):
@@ -37,7 +36,7 @@ class Utils:
                     return "running"
             return "stopped"
         except Exception as e:
-            print(f"❌ Ошибка проверки статуса бота {bot_name}: {e}")
+            print(f"❌ Ошибка проверки статуса бота {bot.get('name')}: {e}")
             return "error"
 
     @staticmethod
