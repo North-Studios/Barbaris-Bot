@@ -2,7 +2,7 @@ import os
 from telebot import *
 from telebot.types import Message, CallbackQuery
 from config import Config, logger
-from database import db_instance as Database
+from database import db_instance
 from keyboards import Keyboards
 from utils import Utils
 
@@ -90,12 +90,12 @@ class Handlers:
             return
 
         # Проверяем, есть ли пользователь в системе
-        if not Database.user_exists(username):
+        if not db_instance.user_exists(username):
             self.bot.reply_to(message, "❌ Вы не зарегистрированы в системе! Обратитесь к администратору.")
             return
 
         # Проверяем бан
-        if Database.is_banned(username):
+        if db_instance.is_banned(username):
             self.bot.reply_to(message, "🚫 Вы забанены и не можете использовать бота.")
             return
 
@@ -120,10 +120,10 @@ class Handlers:
     def show_user_list_menu(self, message: Message):
         """Показать меню списков пользователей"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
-        if not Database.is_local_admin(username):
+        if not db_instance.is_local_admin(username):
             self.bot.reply_to(message, "❌ Недостаточно прав!")
             return
 
@@ -136,23 +136,23 @@ class Handlers:
     def show_bot_list(self, message: Message):
         """Показать список ботов"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
-        if not Database.is_operator(username):
+        if not db_instance.is_operator(username):
             self.bot.reply_to(message, "❌ Только операторы могут просматривать список ботов!")
             return
 
-        bots = Database.get_all_bots()
+        bots = db_instance.get_all_bots()
         if not bots:
             self.bot.reply_to(message, "❌ Нет добавленных ботов!")
             return
 
         bot_list = "🤖 <b>Список ботов:</b>\n\n"
-        for i, (bot_name, bot_data) in enumerate(bots.items(), 1):
-            status = Utils.get_bot_status(bot_name)
+        for i, bot in enumerate(bots, 1):
+            status = Utils.get_bot_status(bot)
             status_emoji = "🟢" if status == "running" else "🔴" if status == "stopped" else "⚫"
-            bot_list += f"{i}. {bot_name} ({bot_data['username']}) {status_emoji}\n"
+            bot_list += f"{i}. {bot.get('name')} ({bot.get('username')}) {status_emoji}\n"
 
         self.bot.reply_to(message, bot_list, parse_mode='HTML')
 
@@ -168,16 +168,16 @@ class Handlers:
             return
 
         # Проверяем бан
-        if Database.is_banned(username):
+        if db_instance.is_banned(username):
             self.bot.reply_to(message, "🚫 Вы забанены и не можете использовать бота.")
             return
 
-        if not Database.user_exists(username):
-            Database.add_user(user_id, username, first_name)
+        if not db_instance.user_exists(username):
+            db_instance.add_user(user_id, username, first_name)
             logger.info(f"New user @{username}")
 
         # Отправляем приветствие в зависимости от роли
-        rank = Database.get_user_rank(username)
+        rank = db_instance.get_user_rank(username)
         welcome_text = f"👋 Добро пожаловать, {first_name}!\n"
 
         if rank == 'operator':
@@ -203,16 +203,16 @@ class Handlers:
             return
 
         # Проверяем, есть ли пользователь в системе
-        if not Database.user_exists(username):
+        if not db_instance.user_exists(username):
             self.bot.reply_to(message, "❌ Вы не зарегистрированы в системе!")
             return
 
         # Проверяем бан
-        if Database.is_banned(username):
+        if db_instance.is_banned(username):
             self.bot.reply_to(message, "🚫 Вы забанены и не можете использовать бота.")
             return
 
-        user_data = Database.get_user(username)
+        user_data = db_instance.get_user(username)
         if not user_data:
             self.bot.reply_to(message, "❌ Ошибка получения данных!")
             return
@@ -224,7 +224,7 @@ class Handlers:
             'user': '👤 Пользователь'
         }.get(user_data.get('rank', 'user'), '👤 Пользователь')
 
-        banned_status = "🚫 Забанен" if Database.is_banned(username) else "✅ Активен"
+        banned_status = "🚫 Забанен" if db_instance.is_banned(username) else "✅ Отсутствуют"
         info_text = (
             "👤 <b>Информация о пользователе</b>\n\n"
             f"📧 Username: @{username}\n"
@@ -243,10 +243,10 @@ class Handlers:
     def handle_promote_demote(self, message: Message):
         """Обработка повышения/понижения"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
-        if not Database.is_global_admin(username):
+        if not db_instance.is_global_admin(username):
             self.bot.reply_to(message, "❌ Недостаточно прав!")
             return
 
@@ -261,18 +261,18 @@ class Handlers:
             return
 
         # Проверяем, есть ли целевой пользователь в системе
-        if not Database.user_exists(target_username):
+        if not db_instance.user_exists(target_username):
             self.bot.reply_to(message, "❌ Пользователь не найден в системе!")
             return
 
         # Проверяем бан целевого пользователя
-        if Database.is_banned(target_username):
+        if db_instance.is_banned(target_username):
             self.bot.reply_to(message, "❌ Нельзя работать с забаненными пользователями!")
             return
 
         if parts[0].startswith('/promote'):
             # Повышение
-            if not Database.is_operator(username):
+            if not db_instance.is_operator(username):
                 self.bot.reply_to(message, "❌ Только операторы могут повышать!")
                 return
 
@@ -283,19 +283,19 @@ class Handlers:
             )
         else:
             # Понижение
-            target_rank = Database.get_user_rank(target_username)
+            target_rank = db_instance.get_user_rank(target_username)
 
-            if target_rank == 'operator' and not Database.is_operator(username):
+            if target_rank == 'operator' and not db_instance.is_operator(username):
                 self.bot.reply_to(message, "❌ Только операторы могут понижать операторов!")
                 return
 
-            Database.update_user(target_username, {'rank': 'user'})
+            db_instance.update_user(target_username, {'rank': 'user'})
             self.bot.reply_to(message, f"✅ @{target_username} понижен до пользователя")
 
     def handle_ban_unban(self, message: Message):
         """Обработка бана/разбана"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
         parts = message.text.split()
@@ -309,7 +309,7 @@ class Handlers:
             return
 
         # Проверяем, есть ли целевой пользователь в системе
-        if not Database.user_exists(target_username):
+        if not db_instance.user_exists(target_username):
             self.bot.reply_to(message, "❌ Пользователь не найден в системе!")
             return
 
@@ -317,7 +317,7 @@ class Handlers:
 
         if action == "ban":
             # Проверяем права на бан
-            can_ban, error_msg = Database.can_ban_user(username, target_username)
+            can_ban, error_msg = db_instance.can_ban_user(username, target_username)
             if not can_ban:
                 self.bot.reply_to(message, f"❌ {error_msg}")
                 return
@@ -336,9 +336,9 @@ class Handlers:
                 reason = " ".join(parts[3:])
 
             # Баним пользователя
-            if Database.ban_user(target_username, username, ban_time):
+            if db_instance.ban_user(target_username, username, ban_time):
                 # Отправляем уведомление пользователю
-                ban_info = Database.get_ban_info(target_username)
+                ban_info = db_instance.get_ban_info(target_username)
                 ban_duration = "неопределенный срок" if ban_time == 0 else f"{ban_time} часов"
                 ban_message = (
                     "🚫 <b>Вы заблокированы в нашей сетке ботов!</b>\n\n"
@@ -356,11 +356,11 @@ class Handlers:
 
         else:
             # Разбан
-            if not Database.is_global_admin(username):
+            if not db_instance.is_global_admin(username):
                 self.bot.reply_to(message, "❌ Недостаточно прав для разбана!")
                 return
 
-            if Database.unban_user(target_username):
+            if db_instance.unban_user(target_username):
                 # Отправляем уведомление пользователю
                 unban_message = "✅ <b>Вы разблокированы в нашей сетке ботов!</b>"
                 Utils.send_message_to_user(self.bot, target_username, unban_message)
@@ -372,10 +372,10 @@ class Handlers:
     def handle_warn_unwarn(self, message: Message):
         """Обработка выдачи/снятия предупреждений"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
-        if not Database.is_global_admin(username):
+        if not db_instance.is_global_admin(username):
             self.bot.reply_to(message, "❌ Недостаточно прав!")
             return
 
@@ -390,12 +390,12 @@ class Handlers:
             return
 
         # Проверяем, есть ли целевой пользователь в системе
-        if not Database.user_exists(target_username):
+        if not db_instance.user_exists(target_username):
             self.bot.reply_to(message, "❌ Пользователь не найден в системе!")
             return
 
         # Проверяем права на варн
-        can_warn, error_msg = Database.can_warn_user(username, target_username)
+        can_warn, error_msg = db_instance.can_warn_user(username, target_username)
         if not can_warn:
             self.bot.reply_to(message, f"❌ {error_msg}")
             return
@@ -405,13 +405,13 @@ class Handlers:
         if action == "warn":
             reason = " ".join(parts[2:]) if len(parts) > 2 else ""
 
-            success, result = Database.add_warn(target_username, username, reason)
+            success, result = db_instance.add_warn(target_username, username, reason)
             if success:
                 if result == "banned":
                     self.bot.reply_to(message, f"✅ @{target_username} получил предупреждение и автоматически забанен за достижение лимита")
                 else:
                     # Отправляем уведомление пользователю
-                    user_data = Database.get_user(target_username)
+                    user_data = db_instance.get_user(target_username)
                     warn_message = (
                         "⚠️ <b>Вы получили предупреждение!</b>\n\n"
                         f"📊 Текущее количество: {user_data['warns']}/{Config.MAX_WARN}\n"
@@ -428,9 +428,9 @@ class Handlers:
 
         else:
             # Снятие варна
-            if Database.remove_warn(target_username):
+            if db_instance.remove_warn(target_username):
                 # Отправляем уведомление пользователю
-                user_data = Database.get_user(target_username)
+                user_data = db_instance.get_user(target_username)
                 unwarn_message = (
                     "✅ <b>С вас снято предупреждение!</b>\n\n"
                     f"📊 Текущее количество: {user_data['warns']}/{Config.MAX_WARN}"
@@ -444,10 +444,10 @@ class Handlers:
     def handle_list(self, message: Message):
         """Обработка команды /list"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
-        if not Database.is_local_admin(username):
+        if not db_instance.is_local_admin(username):
             self.bot.reply_to(message, "❌ Недостаточно прав!")
             return
 
@@ -460,10 +460,10 @@ class Handlers:
     def handle_getinfo(self, message: Message):
         """Обработка команды /getinfo"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
-        if not Database.is_global_admin(username):
+        if not db_instance.is_global_admin(username):
             self.bot.reply_to(message, "❌ Недостаточно прав!")
             return
 
@@ -478,11 +478,11 @@ class Handlers:
             return
 
         # Проверяем, есть ли целевой пользователь в системе
-        if not Database.user_exists(target_username):
+        if not db_instance.user_exists(target_username):
             self.bot.reply_to(message, "❌ Пользователь не найден в системе!")
             return
 
-        user_data = Database.get_user(target_username)
+        user_data = db_instance.get_user(target_username)
         if not user_data:
             self.bot.reply_to(message, "❌ Ошибка получения данных!")
             return
@@ -494,7 +494,7 @@ class Handlers:
             'user': '👤 Пользователь'
         }.get(user_data.get('rank', 'user'), '👤 Пользователь')
 
-        banned_status = "🚫 Забанен" if Database.is_banned(target_username) else "✅ Активен"
+        banned_status = "🚫 Забанен" if db_instance.is_banned(target_username) else "✅ Активен"
 
         info_text = (
             "👤 <b>Информация о пользователе</b>\n\n"
@@ -514,10 +514,10 @@ class Handlers:
     def handle_reguser(self, message: Message):
         """Обработка команды /reguser - регистрация пользователя"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
-        if not Database.is_global_admin(username):
+        if not db_instance.is_global_admin(username):
             self.bot.reply_to(message, "❌ Недостаточно прав!")
             return
 
@@ -531,7 +531,7 @@ class Handlers:
             return
 
         # Добавляем пользователя в систему
-        if Database.add_user(
+        if db_instance.add_user(
             message.reply_to_message.from_user.id,
             reply_username,
             message.reply_to_message.from_user.first_name
@@ -543,10 +543,10 @@ class Handlers:
     def handle_stats(self, message: Message):
         """Обработка команды /stats"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
-        if not Database.is_operator(username):
+        if not db_instance.is_operator(username):
             self.bot.reply_to(message, "❌ Только операторы могут просматривать статистику!")
             return
 
@@ -556,10 +556,10 @@ class Handlers:
     def handle_alarm(self, message: Message):
         """Обработка команды /alarm - уведомление всех пользователей"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
-        if not Database.is_operator(username):
+        if not db_instance.is_operator(username):
             self.bot.reply_to(message, "❌ Только операторы могут отправлять уведомления!")
             return
 
@@ -569,18 +569,18 @@ class Handlers:
             return
 
         alarm_message = parts[1]
-        users = Database.get_all_users()
+        users = db_instance.get_all_users()
 
         sent_count = 0
         total_count = len(users)
 
         progress_msg = self.bot.reply_to(message, f"📨 Отправка уведомлений: 0/{total_count}")
 
-        for user_username, user_data in users.items():
+        for i, user in enumerate(users, 1):
             try:
-                if not Database.is_banned(user_username) and 'user_id' in user_data:
+                if not db_instance.is_banned(user.get('username')):
                     full_message = f"🚨 <b>Важное уведомление от оператора!</b>\n\n{alarm_message}"
-                    self.bot.send_message(user_data['user_id'], full_message, parse_mode='HTML')
+                    self.bot.send_message(user.get('user_id'), full_message, parse_mode='HTML')
                     sent_count += 1
 
                     # Обновляем прогресс каждые 10 отправок
@@ -593,7 +593,7 @@ class Handlers:
                     time.sleep(0.1)  # Задержка чтобы не спамить
 
             except Exception as e:
-                logger.error(f"Ошибка отправки уведомления @{user_username}: {e}")
+                logger.error(f"Ошибка отправки уведомления @{user.get('username')}: {e}")
                 continue
 
         self.bot.edit_message_text(
@@ -610,25 +610,25 @@ class Handlers:
             return
 
         # Проверяем, есть ли пользователь в системе
-        if not Database.user_exists(username):
+        if not db_instance.user_exists(username):
             self.bot.reply_to(message, "❌ Вы не зарегистрированы в системе! Обратитесь к администратору.")
             return
 
         # Проверяем бан
-        if Database.is_banned(username):
+        if db_instance.is_banned(username):
             self.bot.reply_to(message, "🚫 Вы забанены и не можете использовать бота.")
             return
 
         # Обычные пользователи в ЛС не могут ничего делать
         if (message.chat.type == 'private' and
-            Database.get_user_rank(username) == 'user'):
+            db_instance.get_user_rank(username) == 'user'):
             self.bot.reply_to(message, "❌ У вас нет доступа к функциям бота.")
             return
 
     def handle_callback_query(self, call: CallbackQuery):
         """Обработка callback запросов"""
         username = call.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
         if call.data.startswith('list_'):
@@ -649,9 +649,9 @@ class Handlers:
 
     def handle_list_callback(self, call: CallbackQuery, list_type):
         """Обработка callback для списков"""
-        ladmins = Database.get_all_ladmins()
-        gadmins = Database.get_all_global_admins()
-        operators = Database.get_all_operators()
+        ladmins = db_instance.get_all_ladmins()
+        gadmins = db_instance.get_all_global_admins()
+        operators = db_instance.get_all_operators()
 
         if list_type == 'ladmin':
             text = Utils.format_user_list(ladmins, 'ladmin')
@@ -672,11 +672,11 @@ class Handlers:
     def handle_promote_callback(self, call: CallbackQuery, rank):
         """Обработка callback для повышения пользователя"""
         username = call.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             self.bot.answer_callback_query(call.id, "❌ Доступ запрещен")
             return
 
-        if not Database.is_operator(username):
+        if not db_instance.is_operator(username):
             self.bot.answer_callback_query(call.id, "❌ Только операторы могут повышать!")
             return
 
@@ -693,18 +693,18 @@ class Handlers:
             return
 
         # Проверяем, есть ли целевой пользователь в системе
-        if not Database.user_exists(target_username):
+        if not db_instance.user_exists(target_username):
             self.bot.answer_callback_query(call.id, "❌ Пользователь не найден в системе!")
             return
 
         # Проверяем бан целевого пользователя
-        if Database.is_banned(target_username):
+        if db_instance.is_banned(target_username):
             self.bot.answer_callback_query(call.id, "❌ Нельзя повысить забаненного!")
             return
 
         if rank == 'ladmin':
             # Для локальных админов показываем выбор бота
-            bots = Database.get_all_bots()
+            bots = db_instance.get_all_bots()
             if not bots:
                 self.bot.answer_callback_query(call.id, "❌ Нет доступных ботов!")
                 return
@@ -728,12 +728,12 @@ class Handlers:
 
         if rank == 'gadmin':
             # Добавляем в глобальные админы
-            success = Database.add_global_admin(target_username)
+            success = db_instance.add_global_admin(target_username)
             message = f"✅ @{target_username} повышен до глобального администратора" if success else f"❌ Не удалось повысить @{target_username}"
 
         elif rank == 'operator':
             # Повышение до оператора
-            success = Database.add_operator(target_username)
+            success = db_instance.add_operator(target_username)
             message = f"✅ @{target_username} повышен до оператора" if success else f"❌ Не удалось повысить @{target_username}"
 
         if success:
@@ -759,7 +759,7 @@ class Handlers:
     @staticmethod
     def get_bot_selection_keyboard():
         """Клавиатура выбора бота для локального админа"""
-        bots = Database.get_all_bots()
+        bots = db_instance.get_all_bots()
         keyboard = types.InlineKeyboardMarkup(row_width=2)
 
         for bot_name in bots.keys():
@@ -778,11 +778,11 @@ class Handlers:
     def handle_ladmin_bot_selection(self, call: CallbackQuery, bot_name):
         """Обработка выбора бота для локального админа"""
         username = call.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             self.bot.answer_callback_query(call.id, "❌ Доступ запрещен")
             return
 
-        if not Database.is_operator(username):
+        if not db_instance.is_operator(username):
             self.bot.answer_callback_query(call.id, "❌ Только операторы могут назначать локальных админов!")
             return
 
@@ -795,12 +795,12 @@ class Handlers:
             return
 
         # Проверяем, есть ли целевой пользователь в системе
-        if not Database.user_exists(target_username):
+        if not db_instance.user_exists(target_username):
             self.bot.answer_callback_query(call.id, "❌ Пользователь не найден в системе!")
             return
 
         # Добавляем пользователя как локального админа для выбранного бота
-        success = Database.add_ladmin_to_bot(target_username, bot_name)
+        success = db_instance.add_ladmin_to_bot(target_username, bot_name)
 
         if success:
             message = f"✅ @{target_username} назначен локальным администратором для бота {bot_name}"
@@ -819,11 +819,11 @@ class Handlers:
     def handle_bot_management(self, message: Message):
         """Обработка управления ботами: addbot, removebot, startbot, stopbot"""
         username = message.from_user.username
-        if not username or Database.is_banned(username):
+        if not username or db_instance.is_banned(username):
             return
 
         # Проверяем права - только операторы могут управлять ботами
-        if not Database.is_operator(username):
+        if not db_instance.is_operator(username):
             self.bot.reply_to(message, "❌ Только операторы могут управлять ботами!")
             return
 
@@ -867,7 +867,7 @@ class Handlers:
             return
 
         # Добавляем бота в базу
-        if Database.add_bot(bot_name, exe_path, bot_username, bot_type):
+        if db_instance.add_bot(bot_name, exe_path, bot_username, bot_type):
             self.bot.reply_to(message, f"✅ Бот '{bot_name}' успешно добавлен!\n"
                                        f"🤖 Username: {bot_username}\n"
                                        f"🔧 Тип: {bot_type}\n"
@@ -877,26 +877,26 @@ class Handlers:
 
     def handle_remove_bot(self, message: Message, bot_name: str):
         """Обработка удаления бота"""
-        if Database.remove_bot(bot_name):
+        if db_instance.remove_bot(bot_name):
             self.bot.reply_to(message, f"✅ Бот '{bot_name}' успешно удален!")
         else:
             self.bot.reply_to(message, f"❌ Бот '{bot_name}' не найден!")
 
     def handle_start_bot(self, message: Message, bot_name: str):
         """Обработка запуска бота"""
-        bots = Database.get_all_bots()
+        bot = db_instance.get_bot(bot_name)
 
-        if bot_name not in bots:
+        if not bot:
             self.bot.reply_to(message, f"❌ Бот '{bot_name}' не найден!")
             return
 
-        bot = bots[bot_name]
-        if not bot.get('exe'):
+
+        if not bot.get('exe_path'):
             self.bot.reply_to(message, f"❌ Для бота '{bot_name}' не указан путь к exe!")
             return
 
         # Проверяем статус бота
-        status = Utils.get_bot_status(bot_name)
+        status = Utils.get_bot_status(bot)
         if status == "running":
             self.bot.reply_to(message, f"✅ Бот '{bot_name}' уже запущен!")
             return
@@ -905,25 +905,20 @@ class Handlers:
             return
 
         # Запускаем бота
-        success, result = Utils.start_bot(bot_name)
-
-        if success:
-            # Обновляем статус в базе
-            bot['state'] = True
-            Database.save_bots(bots)
+        result = Utils.start_bot(bot_name)
 
         self.bot.reply_to(message, result)
 
     def handle_stop_bot(self, message: Message, bot_name: str):
         """Обработка остановки бота"""
-        bots = Database.get_all_bots()
+        bot = db_instance.get_bot(bot_name)
 
-        if bot_name not in bots:
+        if not bot:
             self.bot.reply_to(message, f"❌ Бот '{bot_name}' не найден!")
             return
 
         # Проверяем статус бота
-        status = Utils.get_bot_status(bot_name)
+        status = Utils.get_bot_status(bot)
         if status == "stopped":
             self.bot.reply_to(message, f"✅ Бот '{bot_name}' уже остановлен!")
             return
@@ -932,12 +927,6 @@ class Handlers:
             return
 
         # Останавливаем бота
-        success, result = Utils.stop_bot(bot_name)
-
-        if success:
-            # Обновляем статус в базе
-            bot = bots[bot_name]
-            bot['state'] = False
-            Database.save_bots(bots)
+        result = Utils.stop_bot(bot)
 
         self.bot.reply_to(message, result)

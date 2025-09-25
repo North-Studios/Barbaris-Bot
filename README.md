@@ -1,4 +1,4 @@
-# 🤖 Barbariska Bot v5.4
+# 🤖 Barbariska Bot v5.5
 
 Telegram and Discord bot for managing users and bots with enhanced role-based access control, SQLite database support, and improved system management.
 
@@ -152,8 +152,10 @@ Comprehensive stats including:
 
 ## 🐛 Bug Fixes & Improvements
 
-### Fixed in v5.2:
-- /list and /botlist fix
+### Fixed in v5.5:
+- /stats fix
+- /alarm fix
+- /startbot and /stopbot fix
 ---
 
 ## 🔄 Migration from v4.2
@@ -173,13 +175,14 @@ The system will automatically:
 
 ## 📝 Version History
 
-**v5.4** - Minor bug fixes\
-**v5.3** - Minor updates\
-**v5.2** - Minor updates\
-**v5.1** - SQLite database, enhanced management\
-**v4.2** - Enhanced Discord role system, granular permissions\
-**v4.1** - Initial Discord integration with single "Dev" role\
-**v3.6** - Telegram-only version with basic functionality
+* **v5.5** - Minor bug fixes
+* **v5.4** - Minor bug fixes
+* **v5.3** - Minor updates
+* **v5.2** - Minor updates
+* **v5.1** - SQLite database, enhanced management
+* **v4.2** - Enhanced Discord role system, granular permissions
+* **v4.1** - Initial Discord integration with single "Dev" role
+* **v3.6** - Telegram-only version with basic functionality
 
 ---
 

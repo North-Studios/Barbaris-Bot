@@ -86,11 +86,12 @@ class DiscordBot:
             await interaction.response.send_message(embed=embed)
             progress_msg = await interaction.original_response()
 
-            for username, user_data in users.items():
+            for i, user in enumerate(users, 1):
+                username = user.get('username')
                 try:
-                    if not Database.is_banned(username) and 'id' in user_data:
+                    if not Database.is_banned(username):
                         # Отправляем уведомление через Telegram бота
-                        full_message = f"🚨 **Important notification from operator!**\n\n{message}"
+                        full_message = f"🚨 <b>Важное уведомление от оператора!</b>\n\n{message}"
                         Utils.send_message_to_user(None, username, full_message)
                         sent_count += 1
 
@@ -380,13 +381,7 @@ class DiscordBot:
             if not await self.check_op_role(interaction):
                 return
 
-            success, result = Utils.start_bot(name)
-            if success:
-                # Обновляем статус в базе
-                bots = Database.get_all_bots()
-                if name in bots:
-                    bots[name]['state'] = True
-                    Database.save_bots(bots)
+            result = Utils.start_bot(name)
 
             embed = discord.Embed(
                 title=result,
@@ -416,14 +411,7 @@ class DiscordBot:
             if not await self.check_op_role(interaction):
                 return
 
-            success, result = Utils.stop_bot(name)
-            if success:
-                # Обновляем статус в базе
-                bots = Database.get_all_bots()
-                if name in bots:
-                    bots[name]['state'] = False
-                    Database.save_bots(bots)
-
+            result = Utils.stop_bot(name)
             embed = discord.Embed(
                 title=result,
                 color=discord.Color.dark_gray()

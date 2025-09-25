@@ -48,14 +48,14 @@ class Utils:
             return False, "❌ Бот не найден"
 
         try:
-            if Utils.get_bot_status(bot_name) == "running":
+            if Utils.get_bot_status(bot) == "running":
                 return False, "❌ Бот уже запущен"
 
-            subprocess.Popen([bot['exe_path']])
+            subprocess.Popen([bot.get('exe_path')])
             db_instance.update_bot_state(bot_name, True)
-            return True, "✅ Бот запущен"
+            return "✅ Бот запущен"
         except Exception as e:
-            return False, f"❌ Ошибка запуска: {e}"
+            return f"❌ Ошибка запуска: {e}"
 
     @staticmethod
     def stop_bot(bot_name):
@@ -80,9 +80,9 @@ class Utils:
 
             if process_found:
                 db_instance.update_bot_state(bot_name, False)
-                return True, "✅ Бот остановлен"
+                return "✅ Бот остановлен"
             else:
-                return False, "❌ Бот не был запущен"
+                return "❌ Бот не был запущен"
         except Exception as e:
             return False, f"❌ Ошибка остановки: {e}"
 
@@ -98,8 +98,8 @@ class Utils:
         banned_users = sum(1 for user in users if user['banned'])
 
         running_bots = 0
-        for bot in bots:
-            if Utils.get_bot_status(bot['name']) == "running":
+        for i, bot in enumerate(bots, 1):
+            if Utils.get_bot_status(bot) == "running":
                 running_bots += 1
 
         return f"""📊 <b>Статистика системы</b>
@@ -173,3 +173,11 @@ class Utils:
         except Exception as e:
             logger.error(f"Error sending message to {username}: {e}")
         return False
+
+    @staticmethod
+    def do_bot_exist(bot_name):
+        bots = db_instance.get_all_bots()
+        bot_list = []
+
+        for bot in bots:
+            bot_list.append(bot.get('name'))
